@@ -14,14 +14,19 @@ builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<EventRepository>();
 
 // ✅ TicketmasterService'e HttpClient ile erişim
-builder.Services.AddHttpClient<TicketmasterService>(); // 🔁 Doğru kayıt şekli
+builder.Services.AddHttpClient<TicketmasterService>();
 builder.Services.AddScoped<TicketmasterService>();
+
+// Session ayarlarını güncelle
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30); // Session timeout süresi
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
 
 // ✅ MVC controller ve view servisi
 builder.Services.AddControllersWithViews();
-
-// ✅ Session middleware’i
-builder.Services.AddSession();
 
 var app = builder.Build();
 
@@ -32,15 +37,19 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseHttpsRedirection();
 app.UseStaticFiles();
-app.UseSession();
 app.UseRouting();
+
+// Session middleware'ini ekle
+app.UseSession();
+
 app.UseAuthorization();
 
 // ✅ Başlangıç rotası
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Account}/{action=Register}/{id?}");
+    pattern: "{controller=Account}/{action=Login}/{id?}");
 
 app.Run();
 

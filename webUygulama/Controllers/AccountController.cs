@@ -2,6 +2,7 @@
 using webUygulama.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 
 namespace webUygulama.Controllers
 {
@@ -34,7 +35,7 @@ namespace webUygulama.Controllers
             var newUser = new User
             {
                 Email = email,
-                Password = password, // Şifre açık şekilde kaydediliyor
+                Password = password,
                 IsApproved = false,
                 IsAdmin = false,
                 PasswordChanged = false
@@ -44,13 +45,15 @@ namespace webUygulama.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Kayıt başarılı. Yönetici onayı bekleniyor.";
-            return RedirectToAction("Login", "Account");
+            return RedirectToAction("Login");
         }
 
         // GET: /Account/Login
         [HttpGet]
         public IActionResult Login()
         {
+            // Session'da kullanıcı varsa çıkış yap
+            HttpContext.Session.Clear();
             return View();
         }
 
@@ -58,35 +61,63 @@ namespace webUygulama.Controllers
         [HttpPost]
         public async Task<IActionResult> Login(string email, string password)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email && u.Password == password);
-
-            if (user == null)
+            try
             {
-                TempData["Error"] = "E-posta veya şifre hatalı.";
+                // Debug bilgisi
+                Debug.WriteLine($"Giriş denemesi - Email: {email}");
+
+                var user = await _context.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Email == email);
+
+                if (user == null)
+                {
+                    TempData["Error"] = "E-posta adresi bulunamadı.";
+                    return View();
+                }
+
+                // Debug bilgisi
+                Debug.WriteLine($"Kullanıcı bulundu - IsAdmin: {user.IsAdmin}, IsApproved: {user.IsApproved}");
+
+                if (user.Password != password)
+                {
+                    TempData["Error"] = "Şifre hatalı.";
+                    return View();
+                }
+
+                if (!user.IsApproved)
+                {
+                    TempData["Error"] = "Hesabınız henüz yönetici tarafından onaylanmadı.";
+                    return View();
+                }
+
+                // Session'a kullanıcı bilgilerini kaydet
+                HttpContext.Session.SetString("UserEmail", user.Email);
+                HttpContext.Session.SetInt32("UserId", user.Id);
+                HttpContext.Session.SetString("UserRole", user.IsAdmin ? "Admin" : "User");
+
+                if (!user.PasswordChanged)
+                {
+                    TempData["Warning"] = "İlk girişiniz. Lütfen şifrenizi değiştirin.";
+                    return RedirectToAction("ChangePassword");
+                }
+
+                if (user.IsAdmin)
+                {
+                    Debug.WriteLine("Yönetici girişi başarılı - Admin paneline yönlendiriliyor");
+                    TempData["Success"] = "Yönetici girişi başarılı!";
+                    return RedirectToAction("Index", "Admin");
+                }
+
+                TempData["Success"] = "Giriş başarılı!";
+                return RedirectToAction("Index", "Home");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Login hatası: {ex.Message}");
+                TempData["Error"] = "Giriş sırasında bir hata oluştu. Lütfen tekrar deneyin.";
                 return View();
             }
-
-            if (!user.IsApproved)
-            {
-                TempData["Error"] = "Hesabınız henüz yönetici tarafından onaylanmadı.";
-                return View();
-            }
-
-            HttpContext.Session.SetString("UserEmail", user.Email);
-
-            if (!user.PasswordChanged)
-            {
-                TempData["Success"] = "Lütfen şifrenizi değiştirin.";
-                return RedirectToAction("ChangePassword", "Account");
-            }
-
-            if (user.IsAdmin)
-            {
-                return RedirectToAction("Index", "Admin");
-            }
-
-            TempData["Success"] = "Giriş başarılı!";
-            return RedirectToAction("Index", "Home");
         }
 
         // GET: /Account/ChangePassword
