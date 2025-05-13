@@ -91,7 +91,8 @@ namespace webUygulama.Controllers
             return RedirectToAction("Index");
         }
 
-        // Onaylı etkinlikleri getir
+        // Onaylı etkinlikleri getir  
+        [HttpGet]
         public async Task<IActionResult> ApprovedEvents()
         {
             try
