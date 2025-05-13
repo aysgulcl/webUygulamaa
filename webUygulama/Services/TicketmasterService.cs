@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Collections.Generic;
 using webUygulama.Models;
 using Microsoft.EntityFrameworkCore;  // AppDbContext ile bağlantı için gerekli
+using System.Diagnostics;
 
 namespace webUygulama.Services
 {
@@ -29,56 +30,45 @@ namespace webUygulama.Services
         // Ankara'daki etkinlikleri API'den çek
         public async Task<List<Event>> GetAnkaraEventsAsync()
         {
-            string url = $"https://app.ticketmaster.com/discovery/v2/events.json?" +
-                         $"apikey={_apiKey}&city=Ankara&countryCode=TR&size=10";
+            string url = $"https://app.ticketmaster.com/discovery/v2/events.json?apikey={_apiKey}&city=Ankara&countryCode=TR&size=10";
+            var response = await _httpClient.GetAsync(url);
 
-            try
+            if (!response.IsSuccessStatusCode)
             {
-                HttpResponseMessage response = await _httpClient.GetAsync(url);
+                throw new Exception($"API hatası: {response.StatusCode}");
+            }
 
-                if (response.IsSuccessStatusCode)
+            string content = await response.Content.ReadAsStringAsync();
+            var jsonDocument = JsonDocument.Parse(content);
+            var events = new List<Event>();
+
+            if (jsonDocument.RootElement.TryGetProperty("_embedded", out var embedded) &&
+                embedded.TryGetProperty("events", out var eventsArray))
+            {
+                foreach (var eventElement in eventsArray.EnumerateArray())
                 {
-                    string content = await response.Content.ReadAsStringAsync();
-                    var jsonDocument = JsonDocument.Parse(content);
-                    var events = new List<Event>();
-
-                    // _embedded.events array'ini kontrol et
-                    if (jsonDocument.RootElement.TryGetProperty("_embedded", out var embedded) &&
-                        embedded.TryGetProperty("events", out var eventsArray))
+                    var evt = new Event
                     {
-                        foreach (var eventElement in eventsArray.EnumerateArray())
-                        {
-                            var evt = new Event
-                            {
-                                ApiEventId = eventElement.GetProperty("id").GetString(),
-                                Name = eventElement.GetProperty("name").GetString(),
-                                Description = eventElement.TryGetProperty("description", out var desc) ?
-                                    desc.GetString() : "Açıklama bulunmuyor",
-                                Date = eventElement.TryGetProperty("dates", out var dates) &&
-                                    dates.TryGetProperty("start", out var start) &&
-                                    start.TryGetProperty("dateTime", out var dateTime) ?
-                                    DateTime.Parse(dateTime.GetString()) : DateTime.Now,
-                                Url = eventElement.GetProperty("url").GetString(),
-                                ImageUrl = eventElement.TryGetProperty("images", out var images) &&
-                                    images.EnumerateArray().Any() ?
-                                    images.EnumerateArray().First().GetProperty("url").GetString() : "",
-                                City = "Ankara",
-                                IsApproved = false // Varsayılan olarak onaysız
-                            };
-                            events.Add(evt);
-                        }
-                    }
-                    return events;
-                }
-                else
-                {
-                    throw new Exception($"API Hatası: {response.StatusCode}");
+                        ApiEventId = eventElement.GetProperty("id").GetString(),
+                        Name = eventElement.GetProperty("name").GetString(),
+                        Description = eventElement.TryGetProperty("description", out var desc) ?
+                            desc.GetString() : "Açıklama bulunmuyor",
+                        Date = eventElement.TryGetProperty("dates", out var dates) &&
+                            dates.TryGetProperty("start", out var start) &&
+                            start.TryGetProperty("dateTime", out var dateTime) ?
+                            DateTime.Parse(dateTime.GetString()) : DateTime.Now,
+                        Url = eventElement.GetProperty("url").GetString(),
+                        ImageUrl = eventElement.TryGetProperty("images", out var images) &&
+                            images.EnumerateArray().Any() ?
+                            images.EnumerateArray().First().GetProperty("url").GetString() : "",
+                        City = "Ankara",
+                        IsApproved = false
+                    };
+                    events.Add(evt);
                 }
             }
-            catch (Exception ex)
-            {
-                throw new Exception($"İstek sırasında bir hata oluştu: {ex.Message}");
-            }
+
+            return events;
         }
 
         // Etkinlikleri veritabanına kaydet

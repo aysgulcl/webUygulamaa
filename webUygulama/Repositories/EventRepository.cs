@@ -20,15 +20,45 @@ namespace webUygulama.Repositories
             return await _context.Events.ToListAsync();
         }
 
-        public async Task<List<Event>> GetApprovedEvents()
+        public async Task<Event> GetEventByApiIdAsync(string apiEventId)
         {
-            return await _context.Events.Where(e => e.IsApproved).ToListAsync();
+            return await _context.Events.FirstOrDefaultAsync(e => e.ApiEventId == apiEventId);
         }
 
         public async Task AddEvent(Event @event)
         {
-            await _context.Events.AddAsync(@event);
-            await _context.SaveChangesAsync();
+            var existingEvent = await GetEventByApiIdAsync(@event.ApiEventId);
+            if (existingEvent == null)
+            {
+                await _context.Events.AddAsync(@event);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task<List<Event>> GetApprovedEventsAsync()
+        {
+            return await _context.Events
+                .Where(e => e.IsApproved)
+                .OrderByDescending(e => e.Date)
+                .ToListAsync();
+        }
+
+        public async Task ApproveEventAsync(int id)
+        {
+            var @event = await _context.Events.FindAsync(id);
+            if (@event != null)
+            {
+                @event.IsApproved = true;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task<List<Event>> GetPendingEventsAsync()
+        {
+            return await _context.Events
+                .Where(e => !e.IsApproved)
+                .OrderByDescending(e => e.Date)
+                .ToListAsync();
         }
 
         public async Task AddEvents(List<Event> events)
@@ -41,15 +71,6 @@ namespace webUygulama.Repositories
         {
             _context.Events.Update(@event);
             await _context.SaveChangesAsync();
-        }
-
-        // Onaylı etkinlikleri getir
-        public async Task<List<Event>> GetApprovedEventsAsync()
-        {
-            return await _context.Events
-                .Where(e => e.IsApproved)  // Sadece onaylı etkinlikler
-                .OrderBy(e => e.Date)      // Tarihe göre sırala
-                .ToListAsync();            // Listele
         }
 
         // API'den gelen etkinlikleri ekle
@@ -70,14 +91,6 @@ namespace webUygulama.Repositories
             await _context.SaveChangesAsync();
         }
 
-        // Onay bekleyen etkinlikleri getir
-        public async Task<List<Event>> GetPendingEventsAsync()
-        {
-            return await _context.Events
-                                 .Where(e => !e.IsApproved) // Onaylanmamış etkinlikler
-                                 .ToListAsync();
-        }
-
         // Etkinlik id'sine göre bir etkinlik getir
         public async Task<Event> GetEventByIdAsync(int eventId)
         {
@@ -85,20 +98,6 @@ namespace webUygulama.Repositories
                                  .FirstOrDefaultAsync(e => e.Id == eventId);
         }
 
-        
-        public async Task ApproveEventAsync(int eventId)  // string yerine int kullanıyoruz
-        {
-            var eventToApprove = await _context.Events
-                                            .FirstOrDefaultAsync(e => e.Id == eventId);
-
-            if (eventToApprove != null)
-            {
-                eventToApprove.IsApproved = true; // Onayla
-                await _context.SaveChangesAsync(); // Değişiklikleri kaydet
-            }
-        }
-
-       
         public async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();
