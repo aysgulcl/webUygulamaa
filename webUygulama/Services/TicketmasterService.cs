@@ -5,6 +5,7 @@ using System;
 using System.Text.Json;
 using System.Collections.Generic;
 using webUygulama.Models;
+using Microsoft.EntityFrameworkCore;  // AppDbContext ile bağlantı için gerekli
 
 namespace webUygulama.Services
 {
@@ -12,18 +13,20 @@ namespace webUygulama.Services
     {
         private readonly string _apiKey;
         private readonly HttpClient _httpClient;
+        private readonly AppDbContext _context;  // AppDbContext eklendi
 
-        public TicketmasterService(IConfiguration configuration, HttpClient httpClient)
+        public TicketmasterService(IConfiguration configuration, HttpClient httpClient, AppDbContext context)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            _context = context ?? throw new ArgumentNullException(nameof(context));
 
-            // appsettings.json içindeki TicketmasterAPI:ApiKey kısmından alıyoruz
             _apiKey = configuration["TicketmasterAPI:ApiKey"];
 
             if (string.IsNullOrEmpty(_apiKey))
                 throw new ArgumentException("Ticketmaster API anahtarı bulunamadı. Lütfen appsettings.json dosyasını kontrol edin.");
         }
 
+        // Ankara'daki etkinlikleri API'den çek
         public async Task<List<Event>> GetAnkaraEventsAsync()
         {
             string url = $"https://app.ticketmaster.com/discovery/v2/events.json?" +
@@ -47,7 +50,6 @@ namespace webUygulama.Services
                         {
                             var evt = new Event
                             {
-                                // Id'yi kaldırıyoruz çünkü artık auto-increment olacak
                                 ApiEventId = eventElement.GetProperty("id").GetString(),
                                 Name = eventElement.GetProperty("name").GetString(),
                                 Description = eventElement.TryGetProperty("description", out var desc) ?
@@ -78,5 +80,27 @@ namespace webUygulama.Services
                 throw new Exception($"İstek sırasında bir hata oluştu: {ex.Message}");
             }
         }
+
+        // Etkinlikleri veritabanına kaydet
+        public async Task SaveAnkaraEventsAsync()
+        {
+            var events = await GetAnkaraEventsAsync();  // Etkinlikleri API'den al
+
+            // Etkinlikleri veritabanına ekle
+            foreach (var eventItem in events)
+            {
+                // Veritabanında aynı etkinlik var mı diye kontrol edelim
+                var existingEvent = await _context.Events
+                    .FirstOrDefaultAsync(e => e.ApiEventId == eventItem.ApiEventId);
+
+                if (existingEvent == null)  // Etkinlik veritabanında yoksa ekle
+                {
+                    _context.Events.Add(eventItem);
+                }
+            }
+
+            await _context.SaveChangesAsync();  // Değişiklikleri kaydet
+        }
     }
 }
+
