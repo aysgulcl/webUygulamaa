@@ -1,0 +1,124 @@
+﻿@{
+    var pendingUsers = ViewData["PendingUsers"] as List<webUygulama.Models.User>;
+    var pendingEvents = ViewData["PendingEvents"] as List<webUygulama.Models.Event>;
+}
+
+<h2 class="text-center my-4">Yönetici Paneli - Kullanıcı ve Etkinlik Onayları</h2>
+
+<!-- Başarı mesajı -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success text-center">
+        @TempData["Success"]
+    </div>
+}
+
+<div class="container">
+    <!-- Kullanıcı Onayları Tablosu -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-purple text-white">
+            <h4 class="mb-0">Kullanıcı Onayları</h4>
+        </div>
+        <div class="card-body">
+            @if (pendingUsers != null && pendingUsers.Any())
+            {
+                <table class="table table-bordered table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th scope="col">E-posta</th>
+                            <th scope="col">Şifre</th>
+                            <th scope="col">Onay Durumu</th>
+                            <th scope="col">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in pendingUsers)
+                        {
+                            <tr>
+                                <td>@user.Email</td>
+                                <td>@user.Password</td>
+                                <td>
+                                    <span class="badge @(user.IsApproved ? "bg-success" : "bg-warning")">
+                                        @(user.IsApproved ? "Onaylı" : "Onay Bekliyor")
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (!user.IsApproved)
+                                    {
+                                        <form method="post" action="@Url.Action("ApproveUser", "Admin")" class="d-inline">
+                                            <input type="hidden" name="userId" value="@user.Id" />
+                                            <button type="submit" class="btn btn-success btn-sm">Onayla</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-success">Onaylı</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p>No pending users found.</p>
+            }
+        </div>
+    </div>
+
+    <!-- Etkinlik Onayları Tablosu -->
+    <div class="card shadow-sm mt-4">
+        <div class="card-header bg-purple text-white">
+            <h4 class="mb-0">Etkinlik Onayları</h4>
+        </div>
+        <div class="card-body">
+            @if (pendingEvents != null && pendingEvents.Any())
+            {
+                @foreach (var eventItem in pendingEvents)
+                {
+                    <div class="card my-3 p-3">
+                        <h4>@eventItem.Name</h4>
+
+                        <!-- Etkinlik Görseli -->
+                        @if (!string.IsNullOrEmpty(eventItem.ImageUrl))
+                        {
+                            <img src="@eventItem.ImageUrl" alt="@eventItem.Name" class="img-fluid" />
+                        }
+
+                        <!-- Etkinlik Bilgileri -->
+                        <p><strong>Tarih:</strong> @eventItem.Date.ToString("yyyy-MM-dd")</p>
+                        <p><strong>Açıklama:</strong> @eventItem.Description</p>
+                        <a href="@eventItem.Url" target="_blank">Etkinliği Görüntüle</a>
+
+                        <!-- Etkinlik Onay Durumu -->
+                        @if (!eventItem.IsApproved)
+                        {
+                            <form method="post" action="@Url.Action("ApproveEvent", "Admin")" class="mt-2">
+                                <input type="hidden" name="eventId" value="@eventItem.Id" />
+                                <button type="submit" class="btn btn-success">Etkinliği Onayla</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">Onaylı</span>
+                        }
+                    </div>
+                }
+            }
+            else
+            {
+                <p>No pending events found.</p>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Custom CSS to define bg-purple -->
+<style>
+    .bg-purple {
+        background-color: #9b59b6 !important; /* Açık mor renk tonu */
+    }
+</style>
+
+

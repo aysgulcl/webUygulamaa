@@ -1,0 +1,51 @@
+﻿@{
+    ViewData["Title"] = "Kayıt Ol";
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/css/Register.css" />
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h2>@ViewData["Title"]</h2>
+
+            @* Başarı ve hata mesajları *@
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert alert-success" style="color: green; font-weight: bold; margin-bottom: 10px;">
+                    @TempData["Success"]
+                </div>
+            }
+
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger" style="color: red; font-weight: bold; margin-bottom: 10px;">
+                    @TempData["Error"]
+                </div>
+            }
+
+            <form asp-action="Register" method="post">
+                <div class="form-group">
+                    <label for="Email">E-posta</label>
+                    <input type="email" class="form-control" id="Email" name="email" placeholder="E-posta adresinizi girin" required />
+                </div>
+
+                <div class="form-group">
+                    <label for="Password">Şifre</label>
+                    <input type="password" class="form-control" id="Password" name="password" placeholder="Şifrenizi girin" required />
+                </div>
+
+                <button type="submit" class="btn">Kayıt Ol</button>
+            </form>
+
+            <p class="login-link">Zaten hesabınız var mı? <a href="/Account/Login">Giriş yapın</a></p>
+        </div>
+    </div>
+</body>
+</html>

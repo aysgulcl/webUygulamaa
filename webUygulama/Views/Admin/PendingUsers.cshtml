@@ -1,0 +1,81 @@
+﻿@{
+    var pendingUsers = ViewData["PendingUsers"] as List<webUygulama.Models.User>;
+}
+
+<h2 class="text-center my-4">Kullanıcı Onayları</h2>
+
+<!-- Başarı mesajı -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success text-center">
+        @TempData["Success"]
+    </div>
+}
+
+<!-- Hata mesajı -->
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger text-center">
+        @TempData["Error"]
+    </div>
+}
+
+<div class="container">
+    <!-- Kullanıcı Onayları Tablosu -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-purple text-white">
+            <h4 class="mb-0">Onay Bekleyen Kullanıcılar</h4>
+        </div>
+        <div class="card-body">
+            @if (pendingUsers != null && pendingUsers.Any())
+            {
+                <table class="table table-bordered table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th scope="col">E-posta</th>
+                            <th scope="col">Onay Durumu</th>
+                            <th scope="col">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in pendingUsers)
+                        {
+                            <tr>
+                                <td>@user.Email</td>
+                                <td>
+                                    <span class="badge @(user.IsApproved ? "bg-success" : "bg-warning")">
+                                        @(user.IsApproved ? "Onaylı" : "Onay Bekliyor")
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (!user.IsApproved)
+                                    {
+                                        <form method="post" action="@Url.Action("ApproveUser", "Admin")" class="d-inline">
+                                            <input type="hidden" name="userId" value="@user.Id" />
+                                            <button type="submit" class="btn btn-success btn-sm">Onayla</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-success">Onaylı</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p>Onay bekleyen kullanıcı bulunmamaktadır.</p>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Custom CSS to define bg-purple -->
+<style>
+    .bg-purple {
+        background-color: #9b59b6 !important; /* Açık mor renk tonu */
+    }
+</style>

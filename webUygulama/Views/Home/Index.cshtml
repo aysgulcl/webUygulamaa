@@ -1,0 +1,175 @@
+﻿@model IEnumerable<webUygulama.Models.Event>
+@{
+    ViewData["Title"] = "Etkinlikler";
+    var announcements = ViewBag.Announcements as List<string>;
+    var weatherDict = ViewBag.WeatherByCity as Dictionary<string, string>;
+    var recommendations = ViewBag.Recommendations as List<webUygulama.Models.Event>;
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <title>Etkinlikler</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #fff5f8;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: #ffb6c1;
+            color: white;
+            padding: 1.2rem 2rem;
+            font-size: 1.6rem;
+            font-weight: bold;
+            position: relative;
+        }
+
+        .cart-link {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            background-color: #f06292;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.9rem;
+            text-decoration: none;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        section {
+            background-color: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .event {
+            border-bottom: 1px solid #f2c5d3;
+            padding: 1rem 0;
+        }
+
+            .event:last-child {
+                border-bottom: none;
+            }
+
+            .event h3 {
+                color: #d63384;
+                margin-bottom: 0.5rem;
+            }
+
+        .event-info {
+            color: #555;
+            margin-bottom: 0.5rem;
+        }
+
+        .announcements, .recommendations {
+            background-color: #ffe4ec;
+        }
+
+            .announcements h2, .recommendations h2 {
+                color: #c2185b;
+            }
+
+        .footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #ffccda;
+            font-size: 0.9rem;
+            color: #444;
+        }
+
+    </style>
+</head>
+<body>
+    <header>
+        Ankara Etkinlikleri
+        <a class="cart-link" href="/Cart">Sepetim</a>
+    </header>
+
+    <div class="container">
+
+        <!-- Duyurular -->
+        <section class="announcements">
+            <h2>Duyurular</h2>
+            @if (announcements != null && announcements.Any())
+            {
+                <ul>
+                    @foreach (var item in announcements)
+                    {
+                        <li>@item</li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>Henüz duyuru bulunmamaktadır.</p>
+            }
+        </section>
+
+        <!-- Etkinlikler -->
+        <section>
+            <h2>Etkinlikler</h2>
+            @if (Model != null && Model.Any())
+            {
+                @foreach (var item in Model.OrderBy(e => e.Date))
+                {
+                    <div class="event">
+                        <h3>@item.Name</h3>
+                        <p class="event-info"><strong>Tarih:</strong> @item.Date.ToString("dd MMMM yyyy")</p>
+                        <p class="event-info"><strong>Açıklama:</strong> @item.Description</p>
+                        <p class="event-info"><strong>Şehir:</strong> @item.City</p>
+                        <p class="event-info">
+                            <strong>Hava Durumu:</strong>
+                            @{
+                                var weather = weatherDict != null && weatherDict.ContainsKey(item.City)
+                                ? weatherDict[item.City]
+                                : "Bilgi yok";
+                            }
+                            @weather
+                        </p>
+                        <p class="event-info"><a href="@item.Url" target="_blank">Etkinlik Detayı</a></p>
+                    </div>
+                }
+            }
+            else
+            {
+                <p>Gösterilecek etkinlik bulunmamaktadır.</p>
+            }
+        </section>
+
+        <!-- İlgi Alanı Önerileri -->
+        <section class="recommendations">
+            <h2>İlginizi Çekebilecek Etkinlikler</h2>
+            @if (recommendations != null && recommendations.Any())
+            {
+                <ul>
+                    @foreach (var rec in recommendations)
+                    {
+                        <li><strong>@rec.Name</strong> - @rec.City - @rec.Date.ToString("dd MMM")</li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>İlginizi çekebilecek bir öneri bulunamadı.</p>
+            }
+        </section>
+    </div>
+
+    <div class="footer">
+        © 2025 Etkinlik Yönetim Sistemi
+    </div>
+</body>
+</html>
+
