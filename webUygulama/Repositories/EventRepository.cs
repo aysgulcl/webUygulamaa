@@ -65,6 +65,21 @@ namespace webUygulama.Services
                 .OrderByDescending(e => e.StartDateTime)
                 .ToListAsync();
         }
+
+        public async Task AddEventsFromApiAsync(List<Event> apiEvents)
+        {
+            // Aynı ApiEventId’ye sahip olanları filtrele
+            var newEvents = apiEvents
+                .Where(e => !_context.Events.Any(db => db.TicketmasterId == e.TicketmasterId))
+                .ToList();
+
+            if (!newEvents.Any())
+                return;
+
+            // Toplu ekle ve tek seferde kaydet
+            await _context.Events.AddRangeAsync(newEvents);
+            await _context.SaveChangesAsync();
+        }
     }
 }
 

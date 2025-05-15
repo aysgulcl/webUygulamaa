@@ -21,12 +21,25 @@ namespace webUygulama.Controllers
         }
 
         [HttpGet]
-        // Kullanıcılar için: Onaylanmış etkinlikleri listele
         public async Task<IActionResult> Index()
         {
-            var events = await _eventRepository.GetApprovedEventsAsync();
-            return View(events);
+            var apiEvents = await _ticketmasterService.GetAnkaraEventsAsync();
+
+            // Tek seferde tüm listeyi ekle
+            await _eventRepository.AddEventsFromApiAsync(apiEvents);
+
+            // Sonra DB’den çek
+            var dbEvents = await _eventRepository.GetAllEventsAsync();
+            // …
+            return View(dbEvents);
         }
+
+        // Kullanıcılar için: Onaylanmış etkinlikleri listele
+        /* public async Task<IActionResult> Index()
+         {
+             var events = await _eventRepository.GetApprovedEventsAsync();
+             return View(events);
+         }*/
 
         // Admin için: Tüm etkinlikleri listele
         public async Task<IActionResult> AdminList()
