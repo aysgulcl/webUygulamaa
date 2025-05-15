@@ -20,6 +20,7 @@ namespace webUygulama.Controllers
             _eventRepository = eventRepository;
         }
 
+        [HttpGet]
         // Kullanıcılar için: Onaylanmış etkinlikleri listele
         public async Task<IActionResult> Index()
         {
