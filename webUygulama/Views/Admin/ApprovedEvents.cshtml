@@ -2,12 +2,12 @@
 
 <h2>Onaylı Etkinlikler</h2>
 
-<table>
+<table class="table table-striped">
     <thead>
         <tr>
             <th>Etkinlik Adı</th>
             <th>Tarih</th>
-            <th>Şehir</th>
+            <th>Tür</th>
             <th>Onay Durumu</th>
         </tr>
     </thead>
@@ -16,11 +16,10 @@
         {
             <tr>
                 <td>@eventItem.Name</td>
-                <td>@eventItem.Date</td>
-                <td>@eventItem.City</td>
+                <td>@eventItem.StartDateTime.ToString("yyyy-MM-dd HH:mm")</td>
+                <td>@eventItem.Genre</td>
                 <td>@eventItem.IsApproved ? "Onaylı" : "Onay Bekliyor"</td>
             </tr>
         }
     </tbody>
 </table>
-

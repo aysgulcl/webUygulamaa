@@ -87,9 +87,9 @@
                         }
 
                         <!-- Etkinlik Bilgileri -->
-                        <p><strong>Tarih:</strong> @eventItem.Date.ToString("yyyy-MM-dd")</p>
-                        <p><strong>Açıklama:</strong> @eventItem.Description</p>
-                        <a href="@eventItem.Url" target="_blank">Etkinliği Görüntüle</a>
+                        <p><strong>Tarih:</strong> @eventItem.StartDateTime.ToString("yyyy-MM-dd HH:mm")</p>
+                        <p><strong>Tür:</strong> @eventItem.Genre</p>
+                        <p><strong>Link:</strong> <a href="@eventItem.Url" target="_blank">Etkinliği Görüntüle</a></p>
 
                         <!-- Etkinlik Onay Durumu -->
                         @if (!eventItem.IsApproved)
@@ -108,10 +108,11 @@
             }
             else
             {
-                <p>No pending events found.</p>
+                <p>Onay bekleyen etkinlik bulunmamaktadır.</p>
             }
         </div>
     </div>
+
 </div>
 
 <!-- Custom CSS to define bg-purple -->

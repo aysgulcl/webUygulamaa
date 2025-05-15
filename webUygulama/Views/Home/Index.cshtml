@@ -122,23 +122,32 @@
             <h2>Etkinlikler</h2>
             @if (Model != null && Model.Any())
             {
-                @foreach (var item in Model.OrderBy(e => e.Date))
+                @foreach (var item in Model.OrderBy(e => e.StartDateTime))
                 {
                     <div class="event">
                         <h3>@item.Name</h3>
-                        <p class="event-info"><strong>Tarih:</strong> @item.Date.ToString("dd MMMM yyyy")</p>
-                        <p class="event-info"><strong>Açıklama:</strong> @item.Description</p>
-                        <p class="event-info"><strong>Şehir:</strong> @item.City</p>
-                        <p class="event-info">
-                            <strong>Hava Durumu:</strong>
-                            @{
-                                var weather = weatherDict != null && weatherDict.ContainsKey(item.City)
-                                ? weatherDict[item.City]
-                                : "Bilgi yok";
-                            }
-                            @weather
-                        </p>
+                        <p class="event-info"><strong>Tarih:</strong> @item.StartDateTime.ToString("dd MMMM yyyy HH:mm")</p>
+
+                        <!-- Etkinlik Görseli -->
+                        @if (!string.IsNullOrEmpty(item.ImageUrl))
+                        {
+                            <img src="@item.ImageUrl" alt="@item.Name" class="img-fluid" />
+                        }
+
+                        <p class="event-info"><strong>Tür:</strong> @item.Genre</p>
+
+                        <!-- Etkinlik Linki -->
                         <p class="event-info"><a href="@item.Url" target="_blank">Etkinlik Detayı</a></p>
+
+                        <!-- Etkinlik Onay Durumu -->
+                        @if (item.IsApproved)
+                        {
+                            <p class="event-info"><span class="badge bg-success">Onaylı</span></p>
+                        }
+                        else
+                        {
+                            <p class="event-info"><span class="badge bg-warning">Onay Bekliyor</span></p>
+                        }
                     </div>
                 }
             }
@@ -156,7 +165,7 @@
                 <ul>
                     @foreach (var rec in recommendations)
                     {
-                        <li><strong>@rec.Name</strong> - @rec.City - @rec.Date.ToString("dd MMM")</li>
+                        <li><strong>@rec.Name</strong> - @rec.StartDateTime.ToString("dd MMM yyyy HH:mm") - @rec.Genre</li>
                     }
                 </ul>
             }
@@ -171,5 +180,7 @@
         © 2025 Etkinlik Yönetim Sistemi
     </div>
 </body>
+
+
 </html>
 

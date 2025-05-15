@@ -1,32 +1,23 @@
-﻿using System.ComponentModel.DataAnnotations;
-using static System.Net.Mime.MediaTypeNames;
+﻿using System;
 
 namespace webUygulama.Models
 {
     public class Event
     {
-        [Key]
-        public int Id { get; set; }  // Auto-increment integer ID
+        public int Id { get; set; } // Veritabanı kimliği
 
-        [Required]
-        public string Name { get; set; } = string.Empty;
+        public string TicketmasterId { get; set; } // API'den gelen ID
 
-        public string Description { get; set; } = string.Empty;
+        public string Name { get; set; }
 
-        [Required]
-        public DateTime Date { get; set; }
+        public string Url { get; set; }
 
-        public bool IsApproved { get; set; }  // Onay durumu
+        public string ImageUrl { get; set; }
 
-        [Required]
-        public string ApiEventId { get; set; } = string.Empty; // API'den gelen Etkinlik ID'si
+        public DateTime StartDateTime { get; set; }
 
-        [Required]
-        public string Url { get; set; } = string.Empty; // Etkinlik Linki (URL)
+        public string Genre { get; set; }
 
-        public string ImageUrl { get; set; } = string.Empty; // Etkinlik görseli
-
-        [Required]
-        public string City { get; set; } = string.Empty;
+        public bool IsApproved { get; set; } = false;
     }
 }

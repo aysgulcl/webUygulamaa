@@ -1,17 +1,18 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using webUygulama.Models;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using webUygulama.Services;
-using webUygulama.Repositories;
-using System;
+using webUygulama.Models;
 
 namespace webUygulama.Controllers
 {
     public class EventController : Controller
     {
+
+
         private readonly TicketmasterService _ticketmasterService;
         private readonly EventRepository _eventRepository;
+       
+
 
         public EventController(TicketmasterService ticketmasterService, EventRepository eventRepository)
         {
@@ -19,68 +20,49 @@ namespace webUygulama.Controllers
             _eventRepository = eventRepository;
         }
 
+        // Kullanıcılar için: Onaylanmış etkinlikleri listele
         public async Task<IActionResult> Index()
         {
-            try
-            {
-                // API'den etkinlikleri al
-                var apiEvents = await _ticketmasterService.GetAnkaraEventsAsync();
-                
-                // Her etkinliği veritabanına kaydet
-                foreach (var evt in apiEvents)
-                {
-                    await _eventRepository.AddEvent(evt);
-                }
-
-                // Tüm etkinlikleri getir
-                var allEvents = await _eventRepository.GetAllEvents();
-                
-                if (allEvents.Count == 0)
-                {
-                    TempData["Warning"] = "Hiç etkinlik bulunamadı.";
-                }
-                else
-                {
-                    TempData["Success"] = $"{allEvents.Count} etkinlik listelendi.";
-                }
-
-                return View(allEvents);
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Bir hata oluştu: {ex.Message}";
-                return View(new List<Event>());
-            }
+            var events = await _eventRepository.GetApprovedEventsAsync();
+            return View(events);
         }
 
+        // Admin için: Tüm etkinlikleri listele
+        public async Task<IActionResult> AdminList()
+        {
+            var events = await _eventRepository.GetAllEventsAsync();
+            return View(events);
+        }
+
+        // Admin: Etkinlikleri Ticketmaster API'den çek ve kaydet
         [HttpPost]
-        public async Task<IActionResult> ApproveEvent(int id)
+        public async Task<IActionResult> FetchFromApi()
         {
-            try
+            var apiEvents = await _ticketmasterService.GetAnkaraEventsAsync();
+
+            foreach (var evt in apiEvents)
             {
-                await _eventRepository.ApproveEventAsync(id);
-                TempData["Success"] = "Etkinlik başarıyla onaylandı!";
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Etkinlik onaylanırken hata oluştu: {ex.Message}";
+                if (!await _eventRepository.EventExistsAsync(evt.TicketmasterId))
+                {
+                    await _eventRepository.AddEventAsync(evt);
+                }
             }
 
-            return RedirectToAction("Index");
+            return RedirectToAction("AdminList");
         }
 
-        public async Task<IActionResult> ApprovedEvents()
+        // Admin: Etkinliği onayla
+        [HttpPost]
+        public async Task<IActionResult> Approve(int id)
         {
-            try
+            var evt = await _eventRepository.GetEventByIdAsync(id);
+            if (evt != null)
             {
-                var approvedEvents = await _eventRepository.GetApprovedEventsAsync();
-                return View(approvedEvents);
+                evt.IsApproved = true;
+                await _eventRepository.UpdateEventAsync(evt);
             }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Onaylı etkinlikler getirilirken hata oluştu: {ex.Message}";
-                return View(new List<Event>());
-            }
+
+            return RedirectToAction("AdminList");
         }
     }
 }

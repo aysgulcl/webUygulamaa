@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 
 namespace webUygulama.Controllers
 {
@@ -58,7 +59,7 @@ namespace webUygulama.Controllers
             var pendingUsers = await _userRepository.GetPendingUsersAsync();
 
             // Onay bekleyen etkinlikleri alıyoruz
-            var pendingEvents = await _eventRepository.GetPendingEventsAsync();
+            var pendingEvents = await _eventRepository.GetAllEventsAsync();  // Güncel veritabanı metodunu kullanıyoruz
 
             // Kullanıcıları ve etkinlikleri ViewData'ya aktarıyoruz
             ViewData["PendingUsers"] = pendingUsers;
@@ -68,52 +69,37 @@ namespace webUygulama.Controllers
         }
 
         // API'den çekilen, henüz onaylanmamış etkinlikleri listeler
-        [HttpGet]
-        public async Task<IActionResult> PendingEvents()
-        {
-            var adminEmail = HttpContext.Session.GetString("AdminEmail");
-            if (string.IsNullOrEmpty(adminEmail))
-                return RedirectToAction("Login");
+         [HttpGet]
+         public async Task<IActionResult> PendingEvents()
+         {
+             var adminEmail = HttpContext.Session.GetString("AdminEmail");
+             if (string.IsNullOrEmpty(adminEmail))
+                 return RedirectToAction("Login");
 
-            try 
-            {
-                // API'den etkinlikleri çek
-                var apiEvents = await _ticketmasterService.GetAnkaraEventsAsync();
-                
-                if (apiEvents == null || !apiEvents.Any())
-                {
-                    TempData["Warning"] = "API'den hiç etkinlik alınamadı.";
-                    return View(new List<Event>());
-                }
+             try
+             {
+                 // Önce API'den verileri çek ve kaydet
+                 await _ticketmasterService.SaveAnkaraEventsAsync();
 
-                TempData["Info"] = $"API'den {apiEvents.Count} etkinlik alındı.";
+                 // Sonra onaylanmamış etkinlikleri getir
+                 var pendingEvents = await _eventRepository.GetUnapprovedEventsAsync();
 
-                // API'den gelen etkinlikleri veritabanına kaydet
-                await _eventRepository.AddEventsFromApiAsync(apiEvents);
+                 if (pendingEvents == null || !pendingEvents.Any())
+                 {
+                     TempData["Warning"] = "Onay bekleyen etkinlik bulunamadı.";
+                     return View(new List<Event>());
+                 }
 
-                // Onaylanmamış tüm etkinlikleri getir
-                var pendingEvents = await _eventRepository.GetPendingEventsAsync();
-                
-                if (pendingEvents == null || !pendingEvents.Any())
-                {
-                    TempData["Warning"] = "Veritabanında onay bekleyen etkinlik bulunamadı.";
-                    return View(new List<Event>());
-                }
-
-                TempData["Success"] = $"{pendingEvents.Count} onay bekleyen etkinlik bulundu.";
-                return View(pendingEvents);
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Etkinlikler alınırken bir hata oluştu: {ex.Message}";
-                if (ex.InnerException != null)
-                {
-                    TempData["ErrorDetail"] = $"Detaylı hata: {ex.InnerException.Message}";
-                }
-                return View(new List<Event>());
-            }
-        }
-
+                 TempData["Success"] = $"{pendingEvents.Count} onay bekleyen etkinlik bulundu.";
+                 return View(pendingEvents);
+             }
+             catch (Exception ex)
+             {
+                 TempData["Error"] = $"Etkinlikler alınırken bir hata oluştu: {ex.Message}";
+                 return View(new List<Event>());
+             }
+         }
+       
         [HttpPost]
         public async Task<IActionResult> ApproveEvent(int eventId)
         {
@@ -128,7 +114,8 @@ namespace webUygulama.Controllers
             }
 
             // Etkinliği onaylıyoruz
-            await _eventRepository.ApproveEventAsync(eventId);
+            eventToApprove.IsApproved = true;
+            await _eventRepository.UpdateEventAsync(eventToApprove);
 
             // Başarı mesajı
             TempData["Success"] = "Etkinlik başarıyla onaylandı.";
@@ -191,5 +178,6 @@ namespace webUygulama.Controllers
         }
     }
 }
+
 
 

@@ -5,8 +5,8 @@ using System;
 using System.Text.Json;
 using System.Collections.Generic;
 using webUygulama.Models;
-using Microsoft.EntityFrameworkCore;  // AppDbContext ile bağlantı için gerekli
-using System.Diagnostics;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace webUygulama.Services
 {
@@ -14,7 +14,7 @@ namespace webUygulama.Services
     {
         private readonly string _apiKey;
         private readonly HttpClient _httpClient;
-        private readonly AppDbContext _context;  // AppDbContext eklendi
+        private readonly AppDbContext _context;
 
         public TicketmasterService(IConfiguration configuration, HttpClient httpClient, AppDbContext context)
         {
@@ -22,12 +22,10 @@ namespace webUygulama.Services
             _context = context ?? throw new ArgumentNullException(nameof(context));
 
             _apiKey = configuration["TicketmasterAPI:ApiKey"];
-
             if (string.IsNullOrEmpty(_apiKey))
                 throw new ArgumentException("Ticketmaster API anahtarı bulunamadı. Lütfen appsettings.json dosyasını kontrol edin.");
         }
 
-        // Ankara'daki etkinlikleri API'den çek
         public async Task<List<Event>> GetAnkaraEventsAsync()
         {
             string url = $"https://app.ticketmaster.com/discovery/v2/events.json?apikey={_apiKey}&city=Ankara&countryCode=TR&size=10";
@@ -49,21 +47,32 @@ namespace webUygulama.Services
                 {
                     var evt = new Event
                     {
-                        ApiEventId = eventElement.GetProperty("id").GetString(),
+                        TicketmasterId = eventElement.GetProperty("id").GetString(),
                         Name = eventElement.GetProperty("name").GetString(),
-                        Description = eventElement.TryGetProperty("description", out var desc) ?
-                            desc.GetString() : "Açıklama bulunmuyor",
-                        Date = eventElement.TryGetProperty("dates", out var dates) &&
-                            dates.TryGetProperty("start", out var start) &&
-                            start.TryGetProperty("dateTime", out var dateTime) ?
-                            DateTime.Parse(dateTime.GetString()) : DateTime.Now,
                         Url = eventElement.GetProperty("url").GetString(),
+
                         ImageUrl = eventElement.TryGetProperty("images", out var images) &&
-                            images.EnumerateArray().Any() ?
-                            images.EnumerateArray().First().GetProperty("url").GetString() : "",
-                        City = "Ankara",
+                                   images.ValueKind == JsonValueKind.Array &&
+                                   images.EnumerateArray().Any()
+                                   ? images.EnumerateArray().First().GetProperty("url").GetString()
+                                   : "",
+
+                        StartDateTime = eventElement.TryGetProperty("dates", out var dates) &&
+                                        dates.TryGetProperty("start", out var start) &&
+                                        start.TryGetProperty("dateTime", out var dateTime)
+                                        ? DateTime.Parse(dateTime.GetString())
+                                        : DateTime.MinValue,
+
+                        Genre = eventElement.TryGetProperty("classifications", out var classifications) &&
+                                classifications.ValueKind == JsonValueKind.Array &&
+                                classifications.EnumerateArray().First().TryGetProperty("genre", out var genre) &&
+                                genre.TryGetProperty("name", out var genreName)
+                                ? genreName.GetString()
+                                : "",
+
                         IsApproved = false
                     };
+
                     events.Add(evt);
                 }
             }
@@ -71,26 +80,24 @@ namespace webUygulama.Services
             return events;
         }
 
-        // Etkinlikleri veritabanına kaydet
         public async Task SaveAnkaraEventsAsync()
         {
-            var events = await GetAnkaraEventsAsync();  // Etkinlikleri API'den al
+            var events = await GetAnkaraEventsAsync();
 
-            // Etkinlikleri veritabanına ekle
             foreach (var eventItem in events)
             {
-                // Veritabanında aynı etkinlik var mı diye kontrol edelim
                 var existingEvent = await _context.Events
-                    .FirstOrDefaultAsync(e => e.ApiEventId == eventItem.ApiEventId);
+                    .FirstOrDefaultAsync(e => e.TicketmasterId == eventItem.TicketmasterId);
 
-                if (existingEvent == null)  // Etkinlik veritabanında yoksa ekle
+                if (existingEvent == null)
                 {
                     _context.Events.Add(eventItem);
                 }
             }
 
-            await _context.SaveChangesAsync();  // Değişiklikleri kaydet
+            await _context.SaveChangesAsync();
         }
     }
 }
+
 
