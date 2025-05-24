@@ -1,103 +1,184 @@
-﻿using System.Net.Http;
+using System;
+using System.Collections.Generic;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
-using System;
-using System.Text.Json;
-using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 using webUygulama.Models;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using webUygulama.Repositories;
+using System.Net.Http.Headers;
 using System.Linq;
 
 namespace webUygulama.Services
 {
     public class TicketmasterService
     {
-        private readonly string _apiKey;
         private readonly HttpClient _httpClient;
-        private readonly AppDbContext _context;
+        private readonly string _apiKey;
+        private readonly IConfiguration _configuration;
+        private readonly ILogger<TicketmasterService> _logger;
+        private readonly EventRepository _eventRepository;
 
-        public TicketmasterService(IConfiguration configuration, HttpClient httpClient, AppDbContext context)
+        public TicketmasterService(
+            HttpClient httpClient, 
+            IConfiguration configuration, 
+            ILogger<TicketmasterService> logger,
+            EventRepository eventRepository)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _eventRepository = eventRepository ?? throw new ArgumentNullException(nameof(eventRepository));
+            
+            _apiKey = configuration["TicketmasterApi:ApiKey"] ?? throw new ArgumentNullException("API key bulunamadı");
+            
+            _logger.LogInformation($"TicketmasterService başlatıldı, API key: {_apiKey}");
+        }
 
-            _apiKey = configuration["TicketmasterAPI:ApiKey"];
-            if (string.IsNullOrEmpty(_apiKey))
-                throw new ArgumentException("Ticketmaster API anahtarı bulunamadı. Lütfen appsettings.json dosyasını kontrol edin.");
+        private string MapApiCategoryToSystemCategory(string apiCategory, string apiGenre = "", string apiSubGenre = "")
+        {
+            // API kategorisini küçük harfe çevirip boşlukları kaldır
+            var normalizedCategory = (apiCategory + " " + apiGenre + " " + apiSubGenre)
+                .ToLower()
+                .Trim();
+
+            // API kategorilerini bizim kategorilerimizle eşleştir
+            if (normalizedCategory.Contains("music") || normalizedCategory.Contains("müzik"))
+                return "Müzik";
+            if (normalizedCategory.Contains("theatre") || normalizedCategory.Contains("tiyatro"))
+                return "Tiyatro";
+            if (normalizedCategory.Contains("sport") || normalizedCategory.Contains("spor"))
+                return "Spor";
+            if (normalizedCategory.Contains("film") || normalizedCategory.Contains("movie") || normalizedCategory.Contains("sinema"))
+                return "Sinema";
+            if (normalizedCategory.Contains("dance") || normalizedCategory.Contains("dans"))
+                return "Dans";
+            if (normalizedCategory.Contains("art") || normalizedCategory.Contains("exhibition") || normalizedCategory.Contains("sergi"))
+                return "Sergi";
+            if (normalizedCategory.Contains("festival"))
+                return "Festival";
+            if (normalizedCategory.Contains("concert") || normalizedCategory.Contains("konser"))
+                return "Konser";
+            if (normalizedCategory.Contains("comedy") || normalizedCategory.Contains("standup") || normalizedCategory.Contains("stand-up"))
+                return "Stand-up";
+            if (normalizedCategory.Contains("workshop") || normalizedCategory.Contains("atölye"))
+                return "Workshop";
+
+            // Eşleşme bulunamazsa varsayılan kategori
+            return "Diğer";
+        }
+
+        public async Task<List<Event>> GetEventsAsync()
+        {
+            return await GetAnkaraEventsAsync();
         }
 
         public async Task<List<Event>> GetAnkaraEventsAsync()
         {
-            string url = $"https://app.ticketmaster.com/discovery/v2/events.json?apikey={_apiKey}&city=Ankara&countryCode=TR&size=10";
-            var response = await _httpClient.GetAsync(url);
-
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                throw new Exception($"API hatası: {response.StatusCode}");
-            }
+                _logger.LogInformation("Ankara etkinlikleri alınıyor");
+                var startDate = DateTime.Now.ToString("yyyy-MM-dd");
 
-            string content = await response.Content.ReadAsStringAsync();
-            var jsonDocument = JsonDocument.Parse(content);
-            var events = new List<Event>();
-
-            if (jsonDocument.RootElement.TryGetProperty("_embedded", out var embedded) &&
-                embedded.TryGetProperty("events", out var eventsArray))
-            {
-                foreach (var eventElement in eventsArray.EnumerateArray())
+                if (_httpClient.BaseAddress == null)
                 {
-                    var evt = new Event
-                    {
-                        TicketmasterId = eventElement.GetProperty("id").GetString(),
-                        Name = eventElement.GetProperty("name").GetString(),
-                        Url = eventElement.GetProperty("url").GetString(),
-
-                        ImageUrl = eventElement.TryGetProperty("images", out var images) &&
-                                   images.ValueKind == JsonValueKind.Array &&
-                                   images.EnumerateArray().Any()
-                                   ? images.EnumerateArray().First().GetProperty("url").GetString()
-                                   : "",
-
-                        StartDateTime = eventElement.TryGetProperty("dates", out var dates) &&
-                                        dates.TryGetProperty("start", out var start) &&
-                                        start.TryGetProperty("dateTime", out var dateTime)
-                                        ? DateTime.Parse(dateTime.GetString())
-                                        : DateTime.MinValue,
-
-                        Genre = eventElement.TryGetProperty("classifications", out var classifications) &&
-                                classifications.ValueKind == JsonValueKind.Array &&
-                                classifications.EnumerateArray().First().TryGetProperty("genre", out var genre) &&
-                                genre.TryGetProperty("name", out var genreName)
-                                ? genreName.GetString()
-                                : "",
-
-                        IsApproved = false
-                    };
-
-                    events.Add(evt);
+                    _logger.LogError("HttpClient BaseAddress null");
+                    throw new InvalidOperationException("HttpClient BaseAddress is not set");
                 }
-            }
 
-            return events;
+                var apiUrl = new Uri(_httpClient.BaseAddress, $"discovery/v2/events?apikey={_apiKey}&locale=tr&size=100&city=Ankara&countryCode=TR&startDateTime={startDate}T00:00:00Z");
+                
+                _logger.LogInformation($"API isteği yapılıyor: {apiUrl}");
+
+                var response = await _httpClient.GetAsync(apiUrl);
+                var content = await response.Content.ReadAsStringAsync();
+                
+                _logger.LogInformation($"API yanıt durumu: {response.StatusCode}");
+                _logger.LogInformation($"API yanıt içeriği: {content}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError($"API hatası: {response.StatusCode}");
+                    _logger.LogError($"Hata detayı: {content}");
+                    return new List<Event>();
+                }
+
+                var json = JObject.Parse(content);
+                var events = new List<Event>();
+
+                if (json["_embedded"]?["events"] is JArray eventArray)
+                {
+                    foreach (var item in eventArray)
+                    {
+                        try 
+                        {
+                            var apiCategory = item["classifications"]?[0]?["segment"]?["name"]?.ToString() ?? "";
+                            var apiGenre = item["classifications"]?[0]?["genre"]?["name"]?.ToString() ?? "";
+                            var apiSubGenre = item["classifications"]?[0]?["subGenre"]?["name"]?.ToString() ?? "";
+
+                            var evt = new Event
+                            {
+                                ExternalId = item["id"]?.ToString(),
+                                Name = item["name"]?.ToString() ?? "İsimsiz Etkinlik",
+                                Description = item["description"]?.ToString() ?? item["info"]?.ToString() ?? "Açıklama bulunmuyor",
+                                Date = DateTime.Parse(item["dates"]?["start"]?["dateTime"]?.ToString() ?? DateTime.Now.ToString()),
+                                Location = item["_embedded"]?["venues"]?[0]?["name"]?.ToString() ?? "Konum belirtilmemiş",
+                                ImageUrl = item["images"]?.FirstOrDefault()?["url"]?.ToString() ?? "",
+                                Price = item["priceRanges"]?.FirstOrDefault()?["min"]?.Value<decimal>() ?? 0,
+                                Category = MapApiCategoryToSystemCategory(apiCategory, apiGenre, apiSubGenre),
+                                IsApproved = false,
+                                CreatedAt = DateTime.Now
+                            };
+                            events.Add(evt);
+                            _logger.LogInformation($"Etkinlik eklendi: {evt.Name} (Kategori: {evt.Category})");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError($"Etkinlik işlenirken hata: {ex.Message}");
+                            continue;
+                        }
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("API yanıtında _embedded.events bulunamadı");
+                    _logger.LogWarning($"API yanıt yapısı: {json}");
+                }
+
+                _logger.LogInformation($"Toplam {events.Count} etkinlik bulundu");
+                return events;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"GetAnkaraEventsAsync'de hata: {ex.Message}");
+                _logger.LogError($"Hata detayı: {ex.StackTrace}");
+                return new List<Event>();
+            }
         }
 
-        public async Task SaveAnkaraEventsAsync()
+        public async Task<bool> SaveAnkaraEventsAsync()
         {
-            var events = await GetAnkaraEventsAsync();
-
-            foreach (var eventItem in events)
+            try
             {
-                var existingEvent = await _context.Events
-                    .FirstOrDefaultAsync(e => e.TicketmasterId == eventItem.TicketmasterId);
-
-                if (existingEvent == null)
+                var events = await GetAnkaraEventsAsync();
+                _logger.LogInformation($"Kaydedilecek {events.Count} etkinlik alındı");
+                
+                if (events.Any())
                 {
-                    _context.Events.Add(eventItem);
+                    await _eventRepository.AddEventsFromApiAsync(events);
+                    _logger.LogInformation("Etkinlikler başarıyla veritabanına kaydedildi");
+                    return true;
                 }
+                
+                _logger.LogWarning("Kaydedilecek etkinlik bulunamadı");
+                return false;
             }
-
-            await _context.SaveChangesAsync();
+            catch (Exception ex)
+            {
+                _logger.LogError($"Etkinlikler kaydedilirken hata: {ex.Message}");
+                return false;
+            }
         }
     }
-}
-
-
+} 

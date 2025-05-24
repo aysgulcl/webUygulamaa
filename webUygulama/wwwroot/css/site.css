@@ -20,3 +20,58 @@ html {
 body {
   margin-bottom: 60px;
 }
+
+/* Pembe renk tanımlamaları */
+.bg-pink-light {
+    background-color: #ffe0f0 !important;
+}
+
+.text-pink-dark {
+    color: #d63384 !important;
+}
+
+.border-pink {
+    border-color: #d63384 !important;
+}
+
+/* Duyuru kartları için hover efekti */
+.card.border-pink:hover {
+    box-shadow: 0 0.5rem 1rem rgba(214, 51, 132, 0.15);
+    transform: translateY(-2px);
+    transition: all 0.3s ease;
+}
+
+/* Önerilen Etkinlikler Stilleri */
+.border-purple {
+    border-color: #6f42c1 !important;
+}
+
+.bg-purple-light {
+    background-color: #e2d9f3 !important;
+}
+
+.text-purple-dark {
+    color: #45278d !important;
+}
+
+.text-purple {
+    color: #6f42c1 !important;
+}
+
+.btn-outline-purple {
+    color: #6f42c1;
+    border-color: #6f42c1;
+}
+
+.btn-outline-purple:hover {
+    color: #fff;
+    background-color: #6f42c1;
+    border-color: #6f42c1;
+}
+
+/* Önerilen etkinlik kartları için hover efekti */
+.card.border-0.shadow-sm:hover {
+    transform: translateY(-3px);
+    transition: transform 0.2s ease-in-out;
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15) !important;
+}

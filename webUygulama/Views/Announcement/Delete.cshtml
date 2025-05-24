@@ -1,0 +1,64 @@
+@model webUygulama.Models.Announcement
+
+@{
+    ViewData["Title"] = "Duyuru Sil";
+}
+
+<div class="container-fluid">
+    <h1>Duyuru Sil</h1>
+    <div class="alert alert-danger">
+        <h4>Bu duyuruyu silmek istediğinizden emin misiniz?</h4>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <dl class="row">
+                <dt class="col-sm-2">@Html.DisplayNameFor(model => model.Title)</dt>
+                <dd class="col-sm-10">@Html.DisplayFor(model => model.Title)</dd>
+                
+                <dt class="col-sm-2">@Html.DisplayNameFor(model => model.Content)</dt>
+                <dd class="col-sm-10">@Html.DisplayFor(model => model.Content)</dd>
+                
+                <dt class="col-sm-2">@Html.DisplayNameFor(model => model.PublishDate)</dt>
+                <dd class="col-sm-10">@Model.PublishDate.ToString("dd.MM.yyyy HH:mm")</dd>
+                
+                <dt class="col-sm-2">@Html.DisplayNameFor(model => model.EndDate)</dt>
+                <dd class="col-sm-10">@(Model.EndDate?.ToString("dd.MM.yyyy HH:mm") ?? "-")</dd>
+                
+                <dt class="col-sm-2">@Html.DisplayNameFor(model => model.IsImportant)</dt>
+                <dd class="col-sm-10">
+                    @if (Model.IsImportant)
+                    {
+                        <span class="badge bg-danger">Evet</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">Hayır</span>
+                    }
+                </dd>
+                
+                <dt class="col-sm-2">@Html.DisplayNameFor(model => model.IsActive)</dt>
+                <dd class="col-sm-10">
+                    @if (Model.IsActive)
+                    {
+                        <span class="badge bg-success">Aktif</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">Pasif</span>
+                    }
+                </dd>
+            </dl>
+        </div>
+    </div>
+    
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <button type="submit" class="btn btn-danger">
+            <i class="fas fa-trash"></i> Sil
+        </button>
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Listeye Dön
+        </a>
+    </form>
+</div> 

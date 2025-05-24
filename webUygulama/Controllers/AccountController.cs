@@ -3,16 +3,86 @@ using webUygulama.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
+using webUygulama.Data;
+using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Authorization;
 
 namespace webUygulama.Controllers
 {
     public class AccountController : Controller
     {
-        private readonly AppDbContext _context;
+        private readonly UserManager<User> _userManager;
+        private readonly SignInManager<User> _signInManager;
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<AccountController> _logger;
 
-        public AccountController(AppDbContext context)
+        public AccountController(
+            UserManager<User> userManager,
+            SignInManager<User> signInManager,
+            ApplicationDbContext context,
+            ILogger<AccountController> logger)
         {
+            _userManager = userManager;
+            _signInManager = signInManager;
             _context = context;
+            _logger = logger;
+        }
+
+        // GET: /Account/Profile
+        [Authorize]
+        public async Task<IActionResult> Profile()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return View(user);
+        }
+
+        // POST: /Account/UpdateProfile
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateProfile(List<string> interests)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            try
+            {
+                // İlgi alanlarını güncelle
+                user.Interests = interests ?? new List<string>();
+                
+                // Değişiklikleri kaydet
+                var result = await _userManager.UpdateAsync(user);
+                if (result.Succeeded)
+                {
+                    _logger.LogInformation($"Kullanıcı {user.Email} ilgi alanlarını güncelledi. Seçilen alanlar: {string.Join(", ", interests)}");
+                    TempData["Success"] = "İlgi alanlarınız başarıyla güncellendi.";
+                    return RedirectToAction("Index", "Home");
+                }
+                else
+                {
+                    _logger.LogError($"Kullanıcı {user.Email} ilgi alanları güncellenirken hata oluştu: {string.Join(", ", result.Errors)}");
+                    TempData["Error"] = "İlgi alanlarınız güncellenirken bir hata oluştu.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"İlgi alanları güncellenirken hata: {ex.Message}");
+                TempData["Error"] = "Bir hata oluştu. Lütfen tekrar deneyin.";
+            }
+
+            return RedirectToAction("Index", "Home");
         }
 
         // GET: /Account/Register
@@ -26,7 +96,8 @@ namespace webUygulama.Controllers
         [HttpPost]
         public async Task<IActionResult> Register(string email, string password)
         {
-            if (await _context.Users.AnyAsync(u => u.Email == email))
+            var existingUser = await _userManager.FindByEmailAsync(email);
+            if (existingUser != null)
             {
                 TempData["Error"] = "Bu e-posta adresi zaten kayıtlı.";
                 return View();
@@ -34,90 +105,76 @@ namespace webUygulama.Controllers
 
             var newUser = new User
             {
+                UserName = email,
                 Email = email,
-                Password = password,
                 IsApproved = false,
                 IsAdmin = false,
                 PasswordChanged = false
             };
 
-            _context.Users.Add(newUser);
-            await _context.SaveChangesAsync();
+            var result = await _userManager.CreateAsync(newUser, password);
+            if (result.Succeeded)
+            {
+                TempData["Success"] = "Kayıt başarılı. Yönetici onayı bekleniyor.";
+                return RedirectToAction("Login");
+            }
 
-            TempData["Success"] = "Kayıt başarılı. Yönetici onayı bekleniyor.";
-            return RedirectToAction("Login");
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError(string.Empty, error.Description);
+            }
+            return View();
         }
 
         // GET: /Account/Login
         [HttpGet]
         public IActionResult Login()
         {
-            // Session'da kullanıcı varsa çıkış yap
-            HttpContext.Session.Clear();
             return View();
         }
 
         // POST: /Account/Login
         [HttpPost]
-        public async Task<IActionResult> Login(string email, string password)
+        public async Task<IActionResult> Login(LoginViewModel model)
         {
-            try
+            if (ModelState.IsValid)
             {
-                // Debug bilgisi
-                Debug.WriteLine($"Giriş denemesi - Email: {email}");
-
-                var user = await _context.Users
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(u => u.Email == email);
-
-                if (user == null)
+                var user = await _userManager.FindByEmailAsync(model.Email);
+                if (user != null)
                 {
-                    TempData["Error"] = "E-posta adresi bulunamadı.";
-                    return View();
+                    if (!user.IsApproved)
+                    {
+                        ModelState.AddModelError(string.Empty, "Hesabınız henüz onaylanmamış.");
+                        return View(model);
+                    }
+
+                    var result = await _signInManager.PasswordSignInAsync(user, model.Password, false, false);
+                    if (result.Succeeded)
+                    {
+                        // Bu kullanıcıyı admin yap
+                        if (model.Email == "aysegulcancatal@gmail.com" && !user.IsAdmin)
+                        {
+                            user.IsAdmin = true;
+                            await _userManager.UpdateAsync(user);
+                            await _userManager.AddToRoleAsync(user, "Admin");
+                        }
+
+                        if (!user.PasswordChanged)
+                        {
+                            return RedirectToAction("ChangePassword");
+                        }
+
+                        if (user.IsAdmin)
+                        {
+                            return RedirectToAction("Index", "Admin");
+                        }
+
+                        return RedirectToAction("Index", "Home");
+                    }
                 }
-
-                // Debug bilgisi
-                Debug.WriteLine($"Kullanıcı bulundu - IsAdmin: {user.IsAdmin}, IsApproved: {user.IsApproved}");
-
-                if (user.Password != password)
-                {
-                    TempData["Error"] = "Şifre hatalı.";
-                    return View();
-                }
-
-                if (!user.IsApproved)
-                {
-                    TempData["Error"] = "Hesabınız henüz yönetici tarafından onaylanmadı.";
-                    return View();
-                }
-
-                // Session'a kullanıcı bilgilerini kaydet
-                HttpContext.Session.SetString("UserEmail", user.Email);
-                HttpContext.Session.SetInt32("UserId", user.Id);
-                HttpContext.Session.SetString("UserRole", user.IsAdmin ? "Admin" : "User");
-
-                if (!user.PasswordChanged)
-                {
-                    TempData["Warning"] = "İlk girişiniz. Lütfen şifrenizi değiştirin.";
-                    return RedirectToAction("ChangePassword");
-                }
-
-                if (user.IsAdmin)
-                {
-                    Debug.WriteLine("Yönetici girişi başarılı - Admin paneline yönlendiriliyor");
-                    TempData["Success"] = "Yönetici girişi başarılı!";
-                    return RedirectToAction("Index", "Admin");
-                }
-
-                TempData["Success"] = "Giriş başarılı!";
-                return RedirectToAction("Index", "Home");
+                ModelState.AddModelError(string.Empty, "Geçersiz giriş denemesi");
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Login hatası: {ex.Message}");
-                TempData["Error"] = "Giriş sırasında bir hata oluştu. Lütfen tekrar deneyin.";
-                return View();
-            }
+            return View(model);
         }
 
         // GET: /Account/ChangePassword
@@ -131,19 +188,10 @@ namespace webUygulama.Controllers
         [HttpPost]
         public async Task<IActionResult> ChangePassword(string currentPassword, string newPassword, string confirmPassword)
         {
-            var email = HttpContext.Session.GetString("UserEmail");
-
-            if (string.IsNullOrEmpty(email))
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
             {
-                return RedirectToAction("Login", "Account");
-            }
-
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-
-            if (user == null || user.Password != currentPassword)
-            {
-                TempData["Error"] = "Mevcut şifreniz hatalı.";
-                return View();
+                return RedirectToAction("Login");
             }
 
             if (newPassword != confirmPassword)
@@ -152,11 +200,15 @@ namespace webUygulama.Controllers
                 return View();
             }
 
-            user.Password = newPassword;
-            user.PasswordChanged = true;
+            var result = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+            if (!result.Succeeded)
+            {
+                TempData["Error"] = "Mevcut şifreniz hatalı.";
+                return View();
+            }
 
-            _context.Users.Update(user);
-            await _context.SaveChangesAsync();
+            user.PasswordChanged = true;
+            await _userManager.UpdateAsync(user);
 
             TempData["Success"] = "Şifreniz başarıyla değiştirildi.";
 
@@ -166,6 +218,23 @@ namespace webUygulama.Controllers
             }
 
             return RedirectToAction("Index", "Home");
+        }
+
+        // POST: /Account/Logout
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Logout()
+        {
+            await _signInManager.SignOutAsync();
+            _logger.LogInformation("Kullanıcı çıkış yaptı.");
+            return RedirectToAction("Login", "Account");
+        }
+
+        [HttpGet]
+        public IActionResult AccessDenied(string? returnUrl = null)
+        {
+            ViewBag.ReturnUrl = returnUrl;
+            return View();
         }
     }
 }

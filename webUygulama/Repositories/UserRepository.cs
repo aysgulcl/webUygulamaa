@@ -2,99 +2,122 @@
 using webUygulama.Models;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Linq;
+using webUygulama.Data;
+using Microsoft.AspNetCore.Identity;
 
 namespace webUygulama.Repositories
 {
-    public class UserRepository
+    public class UserRepository : IUserRepository
     {
-        private readonly AppDbContext _context;
+        private readonly ApplicationDbContext _context;
+        private readonly UserManager<User> _userManager;
+        private readonly SignInManager<User> _signInManager;
 
-        public UserRepository(AppDbContext context)
+        public UserRepository(
+            ApplicationDbContext context,
+            UserManager<User> userManager,
+            SignInManager<User> signInManager)
         {
             _context = context;
+            _userManager = userManager;
+            _signInManager = signInManager;
         }
 
         // E-posta ile kullanıcı alma metodu
         public async Task<User?> GetUserByEmailAsync(string email)
         {
-            return await _context.Users
-                .FirstOrDefaultAsync(u => u.Email == email);  // E-posta ile kullanıcıyı arar
+            return await _userManager.FindByEmailAsync(email);
         }
 
         // Kullanıcıyı onaylama metodu
-        public async Task ApproveUserAsync(int userId)
+        public async Task ApproveUserAsync(string userId)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            var user = await _userManager.FindByIdAsync(userId);
             if (user != null)
             {
-                user.IsApproved = true;  // Onay durumunu true yap
-                user.PasswordChanged = false;  // Şifre değiştirilmedi olarak işaretle
-                await _context.SaveChangesAsync();  // Değişiklikleri kaydet
+                user.IsApproved = true;
+                user.PasswordChanged = false;
+                await _userManager.UpdateAsync(user);
             }
         }
 
         // Yönetici olarak giriş yapma metodu
         public async Task<User?> ValidateAdminLoginAsync(string email, string password)
         {
-            var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Email == email && u.Password == password);
-
-            if (user != null && user.IsAdmin)  // Kullanıcı var ve yönetici mi kontrol et
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user != null && user.IsAdmin)
             {
-                return user;
+                var result = await _signInManager.CheckPasswordSignInAsync(user, password, false);
+                if (result.Succeeded)
+                {
+                    return user;
+                }
             }
-
-            return null;  // Yönetici değilse veya kullanıcı bulunamazsa null döner
+            return null;
         }
 
         // Tüm kullanıcıları alma metodu (Admin için)
         public async Task<List<User>> GetUsersAsync()
         {
-            return await _context.Users.ToListAsync();  // Tüm kullanıcıları asenkron olarak alır
+            return await _userManager.Users.ToListAsync();
         }
 
         // Kullanıcıyı ID ile alma metodu
-        public async Task<User?> GetUserByIdAsync(int userId)
+        public async Task<User?> GetUserByIdAsync(string id)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);  // Kullanıcıyı ID ile alır
+            return await _userManager.FindByIdAsync(id);
         }
 
-        // Kullanıcıyı güncelleme metodu (Şifre de dahil)
-        public async Task UpdateUserAsync(User user)
+        // Kullanıcıyı güncelleme metodu
+        public async Task<bool> UpdateUserAsync(User user)
         {
-            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == user.Id);
-
-            if (existingUser != null)
+            try
             {
-                // Veritabanındaki mevcut kullanıcıyı güncelle
-                existingUser.Email = user.Email;
-                existingUser.Password = user.Password;  // Şifreyi güncelle
-                existingUser.IsApproved = user.IsApproved;
-                existingUser.PasswordChanged = user.PasswordChanged;  // Şifre değiştirildi bilgisini güncelle
-
-                await _context.SaveChangesAsync();  // Değişiklikleri kaydet
+                await _userManager.UpdateAsync(user);
+                return true;
+            }
+            catch
+            {
+                return false;
             }
         }
 
         public async Task<List<User>> GetPendingUsersAsync()
         {
-            // Onay bekleyen (IsApproved == false) kullanıcıları alıyoruz
-            return await _context.Users
-                                 .Where(u => !u.IsApproved)
-                                 .ToListAsync();
+            return await _userManager.Users
+                .Where(u => !u.IsApproved)
+                .ToListAsync();
         }
 
-
-        // Kullanıcı şifresini değiştirme ve PasswordChanged'i güncelleme metodu
-        public async Task ChangePasswordAsync(int userId, string newPassword)
+        // Kullanıcı şifresini değiştirme metodu
+        public async Task ChangePasswordAsync(string userId, string newPassword)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-
+            var user = await _userManager.FindByIdAsync(userId);
             if (user != null)
             {
-                user.Password = newPassword;  // Yeni şifreyi güncelle
-                user.PasswordChanged = true;  // Şifre değiştirildi olarak işaretle
-                await _context.SaveChangesAsync();  // Değişiklikleri kaydet
+                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                await _userManager.ResetPasswordAsync(user, token, newPassword);
+                user.PasswordChanged = true;
+                await _userManager.UpdateAsync(user);
+            }
+        }
+
+        public async Task<bool> DeleteUserAsync(string id)
+        {
+            try
+            {
+                var user = await GetUserByIdAsync(id);
+                if (user != null)
+                {
+                    await _userManager.DeleteAsync(user);
+                    return true;
+                }
+                return false;
+            }
+            catch
+            {
+                return false;
             }
         }
     }

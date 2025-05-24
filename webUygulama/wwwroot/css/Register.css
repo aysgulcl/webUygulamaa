@@ -52,6 +52,7 @@ label {
     border: 1px solid #ccc;
     border-radius: 5px;
     font-size: 14px;
+    box-sizing: border-box;
 }
 
     /* Hover ve focus durumunda kutu rengi */
@@ -93,3 +94,23 @@ label {
         .login-link a:hover {
             text-decoration: underline;
         }
+
+/* Alert kutuları */
+.alert {
+    padding: 10px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.alert-danger {
+    background-color: #ffe6e6;
+    color: #ff0000;
+    border: 1px solid #ffcccc;
+}
+
+.alert-success {
+    background-color: #e6ffe6;
+    color: #006600;
+    border: 1px solid #ccffcc;
+}

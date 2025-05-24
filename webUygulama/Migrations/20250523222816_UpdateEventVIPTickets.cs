@@ -5,7 +5,7 @@
 namespace webUygulama.Migrations
 {
     /// <inheritdoc />
-    public partial class AddAdminUser : Migration
+    public partial class UpdateEventVIPTickets : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

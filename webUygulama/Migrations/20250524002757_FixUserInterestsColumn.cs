@@ -5,7 +5,7 @@
 namespace webUygulama.Migrations
 {
     /// <inheritdoc />
-    public partial class RecreateEventsTable : Migration
+    public partial class FixUserInterestsColumn : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

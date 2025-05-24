@@ -1,25 +1,38 @@
-﻿@model List<webUygulama.Models.Event>
+﻿@model IEnumerable<webUygulama.Models.Event>
 
-<h2>Onaylı Etkinlikler</h2>
+@{
+    ViewData["Title"] = "Onaylı Etkinlikler";
+    Layout = "_Layout";
+}
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Etkinlik Adı</th>
-            <th>Tarih</th>
-            <th>Tür</th>
-            <th>Onay Durumu</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var eventItem in Model)
-        {
-            <tr>
-                <td>@eventItem.Name</td>
-                <td>@eventItem.StartDateTime.ToString("yyyy-MM-dd HH:mm")</td>
-                <td>@eventItem.Genre</td>
-                <td>@eventItem.IsApproved ? "Onaylı" : "Onay Bekliyor"</td>
-            </tr>
-        }
-    </tbody>
-</table>
+<div class="container mt-4">
+    <h2>Onaylı Etkinlikler</h2>
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Etkinlik Adı</th>
+                    <th>Tarih</th>
+                    <th>Konum</th>
+                    <th>Fiyat</th>
+                    <th>İşlemler</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var evt in Model)
+                {
+                    <tr>
+                        <td>@evt.Name</td>
+                        <td>@evt.Date.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@evt.Location</td>
+                        <td>@evt.Price.ToString("C")</td>
+                        <td>
+                            <a asp-controller="Events" asp-action="Details" asp-route-id="@evt.Id" class="btn btn-info btn-sm">Detaylar</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

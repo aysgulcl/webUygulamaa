@@ -1,0 +1,56 @@
+@model List<webUygulama.Models.CartItem>
+@{
+    ViewData["Title"] = "Biletlerim";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">Biletlerim</h2>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            <i class="fas fa-ticket-alt me-2"></i>
+            Henüz bir biletiniz bulunmuyor. <a href="@Url.Action("Index", "Home")" class="alert-link">Etkinlikleri incelemek için tıklayın</a>.
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var ticket in Model)
+            {
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        @if (!string.IsNullOrEmpty(ticket.Event?.ImageUrl))
+                        {
+                            <img src="@ticket.Event.ImageUrl" class="card-img-top" alt="@ticket.Event.Name" style="height: 200px; object-fit: cover;">
+                        }
+                        <div class="card-body">
+                            <h5 class="card-title">@ticket.Event?.Name</h5>
+                            <div class="ticket-details">
+                                <p class="mb-2">
+                                    <i class="fas fa-calendar me-2"></i>@ticket.Event?.Date.ToString("dd.MM.yyyy HH:mm")
+                                </p>
+                                <p class="mb-2">
+                                    <i class="fas fa-map-marker-alt me-2"></i>@ticket.Event?.Location
+                                </p>
+                                <p class="mb-2">
+                                    <i class="fas fa-ticket-alt me-2"></i>@ticket.TicketType
+                                </p>
+                                <p class="mb-2">
+                                    <i class="fas fa-users me-2"></i>@ticket.Quantity adet
+                                </p>
+                                <p class="mb-0">
+                                    <i class="fas fa-money-bill-wave me-2"></i>@((ticket.Quantity * ticket.UnitPrice).ToString("C2"))
+                                </p>
+                            </div>
+                        </div>
+                        <div class="card-footer text-muted">
+                            <small>Satın Alma Tarihi: @ticket.CreatedAt.ToString("dd.MM.yyyy HH:mm")</small>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div> 

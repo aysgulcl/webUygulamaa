@@ -1,125 +1,414 @@
-﻿@{
-    var pendingUsers = ViewData["PendingUsers"] as List<webUygulama.Models.User>;
-    var pendingEvents = ViewData["PendingEvents"] as List<webUygulama.Models.Event>;
+﻿@using webUygulama.Models
+@model AdminViewModel
+@{
+    ViewData["Title"] = "Yönetici Paneli";
 }
 
-<h2 class="text-center my-4">Yönetici Paneli - Kullanıcı ve Etkinlik Onayları</h2>
+<div class="container mt-4">
+    <h2 class="text-pink mb-4">Yönetici Paneli</h2>
 
-<!-- Başarı mesajı -->
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success text-center">
-        @TempData["Success"]
-    </div>
-}
-
-<div class="container">
-    <!-- Kullanıcı Onayları Tablosu -->
-    <div class="card shadow-sm">
-        <div class="card-header bg-purple text-white">
-            <h4 class="mb-0">Kullanıcı Onayları</h4>
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
-        <div class="card-body">
-            @if (pendingUsers != null && pendingUsers.Any())
-            {
-                <table class="table table-bordered table-hover">
-                    <thead class="thead-light">
-                        <tr>
-                            <th scope="col">E-posta</th>
-                            <th scope="col">Şifre</th>
-                            <th scope="col">Onay Durumu</th>
-                            <th scope="col">İşlem</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var user in pendingUsers)
-                        {
-                            <tr>
-                                <td>@user.Email</td>
-                                <td>@user.Password</td>
-                                <td>
-                                    <span class="badge @(user.IsApproved ? "bg-success" : "bg-warning")">
-                                        @(user.IsApproved ? "Onaylı" : "Onay Bekliyor")
-                                    </span>
-                                </td>
-                                <td>
-                                    @if (!user.IsApproved)
-                                    {
-                                        <form method="post" action="@Url.Action("ApproveUser", "Admin")" class="d-inline">
-                                            <input type="hidden" name="userId" value="@user.Id" />
-                                            <button type="submit" class="btn btn-success btn-sm">Onayla</button>
-                                        </form>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-success">Onaylı</span>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            }
-            else
-            {
-                <p>No pending users found.</p>
-            }
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            @TempData["Warning"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row mb-4">
+        <div class="col">
+            <form asp-action="RefreshEvents" method="post">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-pink">
+                    <i class="fas fa-sync-alt"></i> Etkinlikleri Güncelle
+                </button>
+            </form>
         </div>
     </div>
 
-    <!-- Etkinlik Onayları Tablosu -->
-    <div class="card shadow-sm mt-4">
-        <div class="card-header bg-purple text-white">
-            <h4 class="mb-0">Etkinlik Onayları</h4>
+    <div class="row g-4">
+        <!-- Duyurular Bölümü -->
+        <div class="col-md-12 mb-4">
+            <div class="card shadow-sm border-pink">
+                <div class="card-header bg-pink-light text-pink-dark d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">Duyurular</h3>
+                    <button type="button" class="btn btn-pink" data-bs-toggle="modal" data-bs-target="#newAnnouncementModal">
+                        <i class="fas fa-plus"></i> Yeni Duyuru
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (!Model.AllAnnouncements.Any())
+                    {
+                        <p class="text-muted mb-0">Henüz duyuru yok.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Başlık</th>
+                                        <th>Yayın Tarihi</th>
+                                        <th>Bitiş Tarihi</th>
+                                        <th>Durum</th>
+                                        <th>Önemli</th>
+                                        <th>İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var announcement in Model.AllAnnouncements)
+                                    {
+                                        <tr>
+                                            <td>
+                                                @if (announcement.IsImportant)
+                                                {
+                                                    <i class="fas fa-exclamation-circle text-danger me-1"></i>
+                                                }
+                                                @announcement.Title
+                                            </td>
+                                            <td>@announcement.PublishDate.ToString("dd.MM.yyyy HH:mm")</td>
+                                            <td>@(announcement.EndDate?.ToString("dd.MM.yyyy HH:mm") ?? "-")</td>
+                                            <td>
+                                                @if (announcement.IsActive)
+                                                {
+                                                    <span class="badge bg-success">Aktif</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">Pasif</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (announcement.IsImportant)
+                                                {
+                                                    <span class="badge bg-danger">Evet</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">Hayır</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <form asp-action="ToggleAnnouncementStatus" method="post" class="d-inline">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@announcement.Id" />
+                                                        <button type="submit" class="btn btn-sm @(announcement.IsActive ? "btn-outline-secondary" : "btn-outline-success")" title="@(announcement.IsActive ? "Pasife Al" : "Aktife Al")">
+                                                            <i class="fas @(announcement.IsActive ? "fa-toggle-off" : "fa-toggle-on")"></i>
+                                                        </button>
+                                                    </form>
+                                                    <form asp-action="DeleteAnnouncement" method="post" class="d-inline">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@announcement.Id" />
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bu duyuruyu silmek istediğinizden emin misiniz?');">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            @if (pendingEvents != null && pendingEvents.Any())
-            {
-                @foreach (var eventItem in pendingEvents)
-                {
-                    <div class="card my-3 p-3">
-                        <h4>@eventItem.Name</h4>
 
-                        <!-- Etkinlik Görseli -->
-                        @if (!string.IsNullOrEmpty(eventItem.ImageUrl))
-                        {
-                            <img src="@eventItem.ImageUrl" alt="@eventItem.Name" class="img-fluid" />
-                        }
+        <!-- Kullanıcılar Bölümü -->
+        <div class="col-md-6">
+            <div class="card shadow-sm border-pink">
+                <div class="card-header bg-pink-light text-pink-dark">
+                    <h3 class="card-title mb-0">Onay Bekleyen Kullanıcılar</h3>
+                </div>
+                <div class="card-body">
+                    @if (!Model.PendingUsers.Any())
+                    {
+                        <p class="text-muted mb-0">Onay bekleyen kullanıcı yok.</p>
+                    }
+                    else
+                    {
+                        <div class="list-group">
+                            @foreach (var user in Model.PendingUsers)
+                            {
+                                <div class="list-group-item list-group-item-pink">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h5 class="mb-1">@user.Email</h5>
+                                            <small class="text-muted">Kullanıcı ID: @user.Id</small>
+                                        </div>
+                                        <div class="btn-group" role="group">
+                                            <form asp-action="ApproveUser" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@user.Id" />
+                                                <button type="submit" class="btn btn-success btn-sm">
+                                                    <i class="fas fa-check"></i> Onayla
+                                                </button>
+                                            </form>
+                                            <form asp-action="DeleteUser" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@user.Id" />
+                                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?');">
+                                                    <i class="fas fa-trash"></i> Sil
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
 
-                        <!-- Etkinlik Bilgileri -->
-                        <p><strong>Tarih:</strong> @eventItem.StartDateTime.ToString("yyyy-MM-dd HH:mm")</p>
-                        <p><strong>Tür:</strong> @eventItem.Genre</p>
-                        <p><strong>Link:</strong> <a href="@eventItem.Url" target="_blank">Etkinliği Görüntüle</a></p>
-
-                        <!-- Etkinlik Onay Durumu -->
-                        @if (!eventItem.IsApproved)
-                        {
-                            <form method="post" action="@Url.Action("ApproveEvent", "Admin")" class="mt-2">
-                                <input type="hidden" name="eventId" value="@eventItem.Id" />
-                                <button type="submit" class="btn btn-success">Etkinliği Onayla</button>
+        <!-- Etkinlikler Bölümü -->
+        <div class="col-md-12">
+            <div class="card shadow-sm border-pink">
+                <div class="card-header bg-pink-light text-pink-dark">
+                    <div class="d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">Tüm Etkinlikler</h3>
+                        <div>
+                            <a href="@Url.Action("Create", "Admin")" class="btn btn-success me-2">
+                                <i class="fas fa-plus"></i> Yeni Etkinlik
+                            </a>
+                            <form asp-action="RefreshEvents" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-pink">
+                                    <i class="fas fa-sync-alt"></i> API'den Güncelle
+                                </button>
                             </form>
-                        }
-                        else
-                        {
-                            <span class="badge bg-success">Onaylı</span>
-                        }
+                        </div>
                     </div>
-                }
-            }
-            else
-            {
-                <p>Onay bekleyen etkinlik bulunmamaktadır.</p>
-            }
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Durum</th>
+                                    <th>Etkinlik Adı</th>
+                                    <th>Tarih</th>
+                                    <th>Konum</th>
+                                    <th>Normal Bilet</th>
+                                    <th>VIP Bilet</th>
+                                    <th>Öğrenci Bilet</th>
+                                    <th>65+ Bilet</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var evt in Model.Events)
+                                {
+                                    <tr>
+                                        <td>
+                                            @if (evt.IsApproved)
+                    {
+                                                <span class="badge bg-success">Onaylı</span>
+                    }
+                    else
+                    {
+                                                <span class="badge bg-warning">Onay Bekliyor</span>
+                                            }
+                                        </td>
+                                        <td>@evt.Name</td>
+                                        <td>@evt.Date.ToString("dd.MM.yyyy HH:mm")</td>
+                                        <td>@evt.Location</td>
+                                        <td>@evt.NormalTicketPrice.ToString("C2") (@evt.NormalTicketCount)</td>
+                                        <td>@evt.VIPTicketPrice.ToString("C2") (@evt.VIPTicketCount)</td>
+                                        <td>@evt.StudentTicketPrice.ToString("C2") (@evt.StudentTicketCount)</td>
+                                        <td>@evt.SeniorTicketPrice.ToString("C2") (@evt.SeniorTicketCount)</td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <a href="@Url.Action("EditEvent", "Admin", new { id = evt.Id })" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-edit"></i> Düzenle
+                                                </a>
+                                                @if (evt.IsApproved)
+                                                {
+                                                    <form asp-action="UnapproveEvent" asp-route-id="@evt.Id" method="post" class="d-inline">
+                                                        @Html.AntiForgeryToken()
+                                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Bu etkinliği anasayfadan kaldırmak istediğinize emin misiniz?')">
+                                                            <i class="fas fa-times"></i> Kaldır
+                                                        </button>
+                                                    </form>
+                                                }
+                                                else
+                                        {
+                                                    <form asp-action="ApproveEvent" asp-route-id="@evt.Id" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                        <button type="submit" class="btn btn-sm btn-success">
+                                                    <i class="fas fa-check"></i> Onayla
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                        </td>
+                                    </tr>
+                            }
+                            </tbody>
+                        </table>
+                        </div>
+                </div>
+            </div>
         </div>
     </div>
-
 </div>
 
-<!-- Custom CSS to define bg-purple -->
-<style>
-    .bg-purple {
-        background-color: #9b59b6 !important; /* Açık mor renk tonu */
-    }
-</style>
+<!-- Yeni Duyuru Modal -->
+<div class="modal fade" id="newAnnouncementModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-pink-light">
+                <h5 class="modal-title text-pink-dark">Yeni Duyuru</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="@Url.Action("CreateAnnouncement", "Admin")">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="Title" class="form-label">Başlık</label>
+                        <input type="text" class="form-control" id="Title" name="Title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="Content" class="form-label">İçerik</label>
+                        <textarea class="form-control" id="Content" name="Content" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="PublishDate" class="form-label">Yayın Tarihi</label>
+                        <input type="datetime-local" class="form-control" id="PublishDate" name="PublishDate" value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="EndDate" class="form-label">Bitiş Tarihi (Opsiyonel)</label>
+                        <input type="datetime-local" class="form-control" id="EndDate" name="EndDate">
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="IsImportant" name="IsImportant">
+                        <label class="form-check-label" for="IsImportant">Önemli Duyuru</label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="IsActive" name="IsActive" checked>
+                        <label class="form-check-label" for="IsActive">Aktif</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-pink">Duyuru Oluştur</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        /* Renk tonları */
+        :root {
+            --pink: #e91e63;
+            --pink-light: #f8bbd0;
+            --pink-dark: #880e4f;
+        }
+
+        .text-pink {
+            color: var(--pink);
+        }
+
+        .text-pink-dark {
+            color: var(--pink-dark);
+        }
+
+        .bg-pink-light {
+            background-color: var(--pink-light);
+        }
+
+        .border-pink {
+            border: 2px solid var(--pink);
+        }
+
+        .btn-pink {
+            background-color: var(--pink);
+            color: white;
+            border: none;
+        }
+
+            .btn-pink:hover {
+                background-color: var(--pink-dark);
+                color: white;
+            }
+
+        .list-group-item-pink {
+            border-left: 5px solid var(--pink);
+            transition: background-color 0.3s ease;
+        }
+
+            .list-group-item-pink:hover {
+                background-color: #fde4ec;
+            }
+
+        .card {
+            border-radius: 10px;
+        }
+
+        .btn-group {
+            gap: 6px;
+        }
+
+        .table th {
+            background-color: var(--pink-light);
+            color: var(--pink-dark);
+        }
+
+        .required:after {
+            content: " *";
+            color: red;
+        }
+
+        .btn-group .btn {
+            margin-right: 0.25rem;
+        }
+        
+        .table td {
+            vertical-align: middle;
+        }
+        
+        .badge {
+            font-size: 0.875rem;
+            padding: 0.5em 0.75em;
+        }
+    </style>
+}
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function() {
+            // Form validation için
+            $.validator.setDefaults({
+                ignore: [],
+                errorElement: 'span',
+                errorClass: 'text-danger'
+            });
+
+            // Modal kapandığında formu sıfırla
+            $('#newAnnouncementModal').on('hidden.bs.modal', function () {
+                $(this).find('form')[0].reset();
+                $(this).find('.text-danger').empty();
+            });
+        });
+    </script>
+}
 
 

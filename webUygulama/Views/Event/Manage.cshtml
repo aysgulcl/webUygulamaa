@@ -1,0 +1,109 @@
+@model IEnumerable<webUygulama.Models.Event>
+@{
+    ViewData["Title"] = "Etkinlik Yönetimi";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-pink">Etkinlik Yönetimi</h2>
+        <div>
+            <a asp-action="Create" class="btn btn-pink me-2">
+                <i class="fas fa-plus"></i> Yeni Etkinlik
+            </a>
+            <form asp-action="FetchFromApi" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-pink">
+                    <i class="fas fa-sync-alt"></i> API'den Güncelle
+                </button>
+            </form>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="card shadow-sm border-pink">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Etkinlik Adı</th>
+                            <th>Tarih</th>
+                            <th>Konum</th>
+                            <th>Fiyat</th>
+                            <th>Durum</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var evt in Model)
+                        {
+                            <tr>
+                                <td>@evt.Name</td>
+                                <td>@evt.Date.ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>@evt.Location</td>
+                                <td>@evt.Price.ToString("C2")</td>
+                                <td>
+                                    <span class="badge @(evt.IsApproved ? "bg-success" : "bg-warning")">
+                                        @(evt.IsApproved ? "Yayında" : "Beklemede")
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a asp-action="Edit" asp-route-id="@evt.Id" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <form asp-action="ToggleApproval" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@evt.Id" />
+                                            <button type="submit" class="btn btn-sm @(evt.IsApproved ? "btn-outline-warning" : "btn-outline-success")" title="@(evt.IsApproved ? "Yayından Kaldır" : "Yayına Al")">
+                                                <i class="fas @(evt.IsApproved ? "fa-eye-slash" : "fa-eye")"></i>
+                                            </button>
+                                        </form>
+                                        <form asp-action="Delete" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@evt.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bu etkinliği silmek istediğinizden emin misiniz?');">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .btn-outline-pink {
+            color: var(--pink);
+            border-color: var(--pink);
+        }
+        .btn-outline-pink:hover {
+            background-color: var(--pink);
+            color: white;
+        }
+        .btn-group {
+            gap: 5px;
+        }
+    </style>
+} 

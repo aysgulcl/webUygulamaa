@@ -1,25 +1,37 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Collections.Generic;
+using System.Text.Json;
 
 namespace webUygulama.Models
 {
-    public class User
+    public class User : IdentityUser
     {
-        [Key]
-        public int Id { get; set; }
+        [PersonalData]
+        public bool IsAdmin { get; set; }
 
-        [Required, MaxLength(100)]
-        public string Email { get; set; } = string.Empty;
+        [PersonalData]
+        public bool IsApproved { get; set; }
 
-        [Required, MaxLength(100)]
-        public string Password { get; set; } = string.Empty;
+        [PersonalData]
+        public bool PasswordChanged { get; set; }
 
-        public bool IsApproved { get; set; } = false;
+        private string _interestsJson = "[]";
 
-        public bool IsAdmin { get; set; } = false;
+        [Column("Interests")]
+        public string InterestsJson
+        {
+            get => _interestsJson;
+            set => _interestsJson = value ?? "[]";
+        }
 
-        public bool PasswordChanged { get; set; } = false;
+        [NotMapped]
+        public List<string> Interests
+        {
+            get => JsonSerializer.Deserialize<List<string>>(InterestsJson) ?? new List<string>();
+            set => InterestsJson = JsonSerializer.Serialize(value ?? new List<string>());
+        }
 
+        public virtual ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
     }
 }

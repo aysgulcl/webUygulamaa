@@ -1,0 +1,164 @@
+@model List<CartItem>
+@{
+    ViewData["Title"] = "Sepetim";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">Sepetim</h2>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            <i class="fas fa-shopping-cart me-2"></i>
+            Sepetiniz boş. <a href="@Url.Action("Index", "Home")" class="alert-link">Etkinlikleri incelemek için tıklayın</a>.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Etkinlik</th>
+                        <th>Bilet Tipi</th>
+                        <th>Adet</th>
+                        <th>Birim Fiyat</th>
+                        <th>Toplam</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    @if (!string.IsNullOrEmpty(item.Event?.ImageUrl))
+                                    {
+                                        <img src="@item.Event.ImageUrl" class="me-3" style="width: 50px; height: 50px; object-fit: cover;" alt="@item.Event.Name">
+                                    }
+                                    <div>
+                                        <h6 class="mb-0">@item.Event?.Name</h6>
+                                        <small class="text-muted">@item.Event?.Date.ToString("dd.MM.yyyy HH:mm")</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                @{
+                                    var ticketType = item.TicketType.ToLower() switch
+                                    {
+                                        "normal" => "Normal Bilet",
+                                        "student" => "Öğrenci Bileti",
+                                        "senior" => "65+ Bileti",
+                                        _ => item.TicketType
+                                    };
+                                }
+                                @ticketType
+                            </td>
+                            <td>@item.Quantity</td>
+                            <td>@item.UnitPrice.ToString("C")</td>
+                            <td>@((item.Quantity * item.UnitPrice).ToString("C"))</td>
+                            <td>
+                                <button class="btn btn-sm btn-danger" onclick="removeFromCart(@item.Id)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4" class="text-end"><strong>Toplam Tutar:</strong></td>
+                        <td><strong>@Model.Sum(x => x.Quantity * x.UnitPrice).ToString("C")</strong></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-end mt-4">
+            <a href="@Url.Action("Index", "Home")" class="btn btn-secondary me-2">
+                <i class="fas fa-arrow-left me-1"></i> Alışverişe Devam Et
+            </a>
+            <button class="btn btn-success" onclick="checkout()">
+                <i class="fas fa-shopping-cart me-1"></i> Satın Al
+            </button>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        function removeFromCart(cartItemId) {
+            Swal.fire({
+                title: 'Emin misiniz?',
+                text: "Bu bileti sepetten kaldırmak istediğinize emin misiniz?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Evet, kaldır',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/Cart/RemoveFromCart/${cartItemId}`, {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            Swal.fire({
+                                title: 'Hata!',
+                                text: data.message || 'Bir hata oluştu',
+                                icon: 'error',
+                                confirmButtonText: 'Tamam'
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        function checkout() {
+            Swal.fire({
+                title: 'Satın Alma',
+                text: "Seçtiğiniz biletleri satın almak istediğinize emin misiniz?",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#28a745',
+                cancelButtonColor: '#dc3545',
+                confirmButtonText: 'Evet, Satın Al',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('/Cart/Checkout', {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                title: 'Başarılı!',
+                                text: 'Satın alma işlemi başarıyla tamamlandı',
+                                icon: 'success',
+                                confirmButtonText: 'Tamam'
+                            }).then(() => {
+                                window.location.href = '/Ticket/MyTickets';
+                            });
+                        } else {
+                            Swal.fire({
+                                title: 'Hata!',
+                                text: data.message || 'Bir hata oluştu',
+                                icon: 'error',
+                                confirmButtonText: 'Tamam'
+                            });
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+} 

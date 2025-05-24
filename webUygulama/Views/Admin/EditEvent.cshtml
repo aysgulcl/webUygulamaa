@@ -1,0 +1,218 @@
+@model webUygulama.Models.Event
+
+@{
+    ViewData["Title"] = Model.Id == 0 ? "Yeni Etkinlik" : "Etkinlik Düzenle";
+}
+
+<div class="container mt-4">
+    <div class="card shadow-sm border-pink">
+        <div class="card-header bg-pink-light text-pink-dark">
+            <h3 class="card-title mb-0">@ViewData["Title"]</h3>
+        </div>
+        <div class="card-body">
+            <form asp-action="@(Model.Id == 0 ? "Create" : "EditEvent")" method="post">
+                <input type="hidden" asp-for="Id" />
+                <input type="hidden" asp-for="CreatedAt" />
+                <input type="hidden" asp-for="ExternalId" />
+
+                <div class="row">
+                    <!-- Temel Bilgiler -->
+                    <div class="col-md-6">
+                        <h4 class="mb-3">Temel Bilgiler</h4>
+                        
+                        <div class="mb-3">
+                            <label asp-for="Name" class="form-label required">Etkinlik Adı</label>
+                            <input asp-for="Name" class="form-control" required />
+                            <span asp-validation-for="Name" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Description" class="form-label required">Açıklama</label>
+                            <textarea asp-for="Description" class="form-control" rows="4" required></textarea>
+                            <span asp-validation-for="Description" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Date" class="form-label required">Tarih ve Saat</label>
+                            <input asp-for="Date" class="form-control" type="datetime-local" required />
+                            <span asp-validation-for="Date" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Location" class="form-label required">Konum</label>
+                            <input asp-for="Location" class="form-control" required />
+                            <span asp-validation-for="Location" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="ImageUrl" class="form-label">Görsel URL</label>
+                            <input asp-for="ImageUrl" class="form-control" />
+                            <span asp-validation-for="ImageUrl" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Category" class="form-label required">Kategori</label>
+                            <select asp-for="Category" class="form-select" required>
+                                <option value="">Kategori Seçin</option>
+                                @foreach (var category in UserInterests.AllInterests)
+                                {
+                                    <option value="@category">@category</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Category" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <!-- Bilet Bilgileri -->
+                    <div class="col-md-6">
+                        <h4 class="mb-3">Bilet Bilgileri</h4>
+                        
+                        <!-- Normal Bilet -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">Normal Bilet</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label asp-for="NormalTicketPrice" class="form-label required">Fiyat (₺)</label>
+                                        <input asp-for="NormalTicketPrice" class="form-control" type="number" step="0.01" required />
+                                        <span asp-validation-for="NormalTicketPrice" class="text-danger"></span>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label asp-for="NormalTicketCount" class="form-label required">Kontenjan</label>
+                                        <input asp-for="NormalTicketCount" class="form-control" type="number" required />
+                                        <span asp-validation-for="NormalTicketCount" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- VIP Bilet -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">VIP Bilet</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label asp-for="VIPTicketPrice" class="form-label required">Fiyat (₺)</label>
+                                        <input asp-for="VIPTicketPrice" class="form-control" type="number" step="0.01" required />
+                                        <span asp-validation-for="VIPTicketPrice" class="text-danger"></span>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label asp-for="VIPTicketCount" class="form-label required">Kontenjan</label>
+                                        <input asp-for="VIPTicketCount" class="form-control" type="number" required />
+                                        <span asp-validation-for="VIPTicketCount" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Öğrenci Bileti -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">Öğrenci Bileti</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label asp-for="StudentTicketPrice" class="form-label required">Fiyat (₺)</label>
+                                        <input asp-for="StudentTicketPrice" class="form-control" type="number" step="0.01" required />
+                                        <span asp-validation-for="StudentTicketPrice" class="text-danger"></span>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label asp-for="StudentTicketCount" class="form-label required">Kontenjan</label>
+                                        <input asp-for="StudentTicketCount" class="form-control" type="number" required />
+                                        <span asp-validation-for="StudentTicketCount" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 65+ Bileti -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">65+ Bileti</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label asp-for="SeniorTicketPrice" class="form-label required">Fiyat (₺)</label>
+                                        <input asp-for="SeniorTicketPrice" class="form-control" type="number" step="0.01" required />
+                                        <span asp-validation-for="SeniorTicketPrice" class="text-danger"></span>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label asp-for="SeniorTicketCount" class="form-label required">Kontenjan</label>
+                                        <input asp-for="SeniorTicketCount" class="form-control" type="number" required />
+                                        <span asp-validation-for="SeniorTicketCount" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Onay Durumu -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input asp-for="IsApproved" class="form-check-input" type="checkbox" />
+                            <label asp-for="IsApproved" class="form-check-label">Etkinliği Onayla (Anasayfada Göster)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Butonlar -->
+                <div class="row mt-4">
+                    <div class="col-12 d-flex justify-content-between">
+                        <a asp-action="Index" class="btn btn-secondary">İptal</a>
+                        <button type="submit" class="btn btn-success">Kaydet</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .required:after {
+            content: " *";
+            color: red;
+        }
+
+        .card-header {
+            background-color: var(--pink-light);
+            color: var(--pink-dark);
+        }
+
+        .border-pink {
+            border-color: var(--pink) !important;
+        }
+
+        .btn-pink {
+            background-color: var(--pink);
+            color: white;
+        }
+
+        .btn-pink:hover {
+            background-color: var(--pink-dark);
+            color: white;
+        }
+    </style>
+}
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function() {
+            // Form validation için
+            $.validator.setDefaults({
+                ignore: [],
+                errorElement: 'span',
+                errorClass: 'text-danger'
+            });
+        });
+    </script>
+} 

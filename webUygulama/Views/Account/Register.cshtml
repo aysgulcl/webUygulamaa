@@ -1,5 +1,5 @@
 ﻿@{
-    ViewData["Title"] = "Kayıt Ol";
+    Layout = null;
 }
 
 <!DOCTYPE html>
@@ -13,19 +13,18 @@
 <body>
     <div class="container">
         <div class="form-container">
-            <h2>@ViewData["Title"]</h2>
+            <h2>Kayıt Ol</h2>
 
-            @* Başarı ve hata mesajları *@
             @if (TempData["Success"] != null)
             {
-                <div class="alert alert-success" style="color: green; font-weight: bold; margin-bottom: 10px;">
+                <div class="alert alert-success">
                     @TempData["Success"]
                 </div>
             }
 
             @if (TempData["Error"] != null)
             {
-                <div class="alert alert-danger" style="color: red; font-weight: bold; margin-bottom: 10px;">
+                <div class="alert alert-danger">
                     @TempData["Error"]
                 </div>
             }
@@ -44,7 +43,9 @@
                 <button type="submit" class="btn">Kayıt Ol</button>
             </form>
 
-            <p class="login-link">Zaten hesabınız var mı? <a href="/Account/Login">Giriş yapın</a></p>
+            <div class="login-link">
+                <a href="/Account/Login">Zaten hesabınız var mı? Giriş yapın</a>
+            </div>
         </div>
     </div>
 </body>
